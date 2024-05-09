@@ -1,7 +1,7 @@
 {
     "openai": {
-        "organization": "chalo",
-        "apiKey": "sk-proj-EVkOd8RdJVDt2yhbvQd0T3BlbkFJRAu6ssiHhxhcjZzq38lw"
+        "organization": "org-name",
+        "apiKey": "key"
     }
 }
 
