@@ -19,8 +19,9 @@ Run `dataeval/load.py` to cache down the results first (including GPT evaluation
 python -m dataeval.load
 ```
 ### Step 2: Generate Final Results
-Run `pipeline/uq_bb.py` with three metrics: auarc, auroc, and rej_acc by changing 'auarc' in line 829 with the desired metric
-You need to also need replace ['coqa']['llama-13b'] with ['coqa']['llama-3-8b'] for fetching the generations' path from _settings.py before running uq_bb.py in line 794 
+Run `pipeline/uq_bb.py` with three metrics: auarc, auroc, and rej_acc by changing 'auarc' in line 829 with the desired metric.
+
+You need to also need replace ['coqa']['llama-13b'] with ['coqa']['llama-3-8b'] for fetching the generations' path from _settings.py before running uq_bb.py in line 794. 
 
 ## Note
 As many may have noticed, `gpt-4-turbo-preview` (which points to `gpt-4-0125-preview`) for GT evaluations
