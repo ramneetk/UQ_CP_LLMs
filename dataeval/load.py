@@ -97,6 +97,7 @@ def read_gpt_eval(path:str, clean=True, debug=False, parallel=False, ith=0, read
     ##### UNCOMMENT only while running load with GPT evaluations (not required while running uq_bb): saving file with top 5 scores and their prob ########
     file_name = path[0:-5]
     file_name += 'gpt_eval/'
+    os.makedirs(file_name, exist_ok=True)
     file_name += f'{ith}'
     np.savez(file=file_name, evals=evals)
     ######################################################
