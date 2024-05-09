@@ -5,8 +5,8 @@ Built on top of code for "Generating with Confidence: Uncertainty Quantification
 Note that to get the automatic evaluation based on GPT, you would need to update `keys.json` with your API keys first.
 First, set the corresponding paths in `_settings.py`.
 
-## Generate the Responses from the model
-Use the `llama-13b-hf`, `mistral-7b-hf` or `llama-3-8b for model, and `coqa`, `triviaqa` and $new dataset$ for the dataset  below. (You need to download the LLaMA weight first).
+## Generate 20 responses from the model
+Use the `llama-13b-hf`, `mistral-7b-hf` or `llama-3-8b` for model, and `coqa`, `triviaqa` or $new dataset$ for the dataset  below. (You need to download the LLaMA weights first).
 ```
 python -m pipeline.generate --model llama-13b-hf --dataset coqa
 ```
