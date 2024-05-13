@@ -15,6 +15,9 @@ import dataeval.load as dload
 import pipeline.clustering as pc
 import pipeline.eval_uq as eval_uq
 
+from sement.cluster.seq_clustering import alpha_clustering
+from sklearn.cluster import DBSCAN
+
 import pdb
 
 FLAG = False
@@ -150,7 +153,7 @@ def _create_semantic_sets(sample):
             if min(sim_mat[ans_i,ans_j], sim_mat[ans_j,ans_i]) > CONTRADICT:
                 semantic_set_ids[ans_j] = semantic_set_ids[ans_i]
 
-    list_of_semantic_set_ids = [semantic_set_ids[x] for x in generated_texts]
+    list_of_semantic_set_ids = [semantic_set_ids[x] for x in generated_texts] # this step is for allocating same cluster to the same/repeated answer
     # map according to the order of appearance
     _map = defaultdict(int)
     ret = []
@@ -159,6 +162,32 @@ def _create_semantic_sets(sample):
             _map[ans] = len(_map)
         ret.append(_map[ans])
     return ret
+
+# our approach for creating semantic sets using alpha clustering
+def _create_alpha_semantic_sets(sample):
+    generated_texts = sample['mapping']
+    cls_logits = sample['sim_mat'] 
+
+    cls_probs = torch.softmax(cls_logits, dim=-1)
+    entailment_probs = cls_probs[0:len(cls_probs), 0:len(cls_probs), -1]
+    entailment_probs = torch.max(entailment_probs, entailment_probs.T) #OR
+    clusters_alpha = alpha_clustering(entailment_probs, alpha=0.5)
+        
+    distance = 1 - entailment_probs
+    dbscan = DBSCAN(metric='precomputed')
+    clusters_assignments_dbscan = dbscan.fit_predict(distance.cpu().numpy())
+
+    list_of_semantic_set_ids = [clusters_assignments_dbscan[x] for x in generated_texts] # this step is for allocating same cluster to the same/repeated answer
+    # map according to the order of appearance
+    _map = defaultdict(int)
+    ret = []
+    for i, ans in enumerate(list_of_semantic_set_ids):
+        if ans not in _map:
+            _map[ans] = len(_map)
+        ret.append(_map[ans])
+
+    return ret
+
 
 
 # whitebox methods
@@ -201,12 +230,21 @@ class UQ_computer:
         if split is not None:
             assert split in ['val', 'test'] and cal_size is not None and seed is not None
             self.key = (_clean_path(path) if self.path is not None else None, clean, split, cal_size, seed)
-            self.keep_indices = np.random.RandomState(seed).choice(len(self.generations), cal_size, replace=False)
-            if split == 'test':
-                self.keep_indices = set(np.arange(len(self.generations))) - set(self.keep_indices)
-            self.generations = [self.generations[_] for _ in self.keep_indices]
-
-
+    
+            if cal_size == 2000: # true in case of triviaqa for llama-13b as conformal modeling paper
+                triviaQA_generations_path = os.path.join(_settings.GENERATION_FOLDER, 'llama-13b-hf_triviaqa_0')
+                import pickle
+                with open(f'{triviaQA_generations_path}/cal_test_info/split_indices.pkl', 'rb') as f: 
+                    trivia_split_indices = pickle.load(f)
+                self.keep_indices = trivia_split_indices['val']
+                if split == 'test':
+                    self.keep_indices = trivia_split_indices['test']
+            else:
+                self.keep_indices = np.random.RandomState(seed).choice(len(self.generations), cal_size, replace=False)
+                if split == 'test':
+                    self.keep_indices = set(np.arange(len(self.generations))) - set(self.keep_indices)
+        
+        self.generations = [self.generations[_] for _ in self.keep_indices]
         self.ids = [_['id'] for _ in self.generations]
 
         self.mem = defaultdict(dict)
@@ -298,15 +336,24 @@ class UQ_computer:
             self.mem['_get_jaccard_matrix'] = [jaccard_one(_['generations'][text_key]) for _ in self.generations]
         return [_[:num_gens, :num_gens] for _ in self.mem['_get_jaccard_matrix']]
 
-    def _get_semantic_ids(self, num_gens):
+    def _get_semantic_ids(self, num_gens): # returns list (of dataset len) of list (of length equal to num_gen) of cluster ids
         if num_gens not in self.mem['_get_gal_semantic_ids']:
             # We must filter sims first before passing to _create_gal_semantic_ids
             sims = [{
-                'mapping': _['mapping'][:num_gens],
-                'sim_mat': _['sim_mat'],
+                'mapping': _['mapping'][:num_gens], # mapping is unique answer ID, so shape = num_gens
+                'sim_mat': _['sim_mat'], # sim_mat is similarity between unique answers, so if no. of unique answers = 15, then shape will be 15X15X3
                 } for _ in self.similarities]
             self.mem['_get_gal_semantic_ids'][num_gens] = [_create_semantic_sets(_) for _ in sims]
         return self.mem['_get_gal_semantic_ids'][num_gens]
+
+    def _get_semantic_ids_using_alpha_clustering(self, num_gens): # returns list (of dataset len) of list (of length equal to num_gen) of cluster ids
+        sims = [{
+                'mapping': _['mapping'][:num_gens], # mapping is unique answer ID, so shape = num_gens
+                'sim_mat': _['sim_mat'], # sim_mat is similarity between unique answers, so if no. of unique answers = 15, then shape will be 15X15X3
+                } for _ in self.similarities]
+        
+        return [_create_alpha_semantic_sets(_) for _ in sims]
+        
 
     # for getting eigenvectors
     def _get_spectral_projected(self, num_gens:int, eigv_threshold:float, affinity_mode:str, temperature:float, symmetric_laplacian:bool, symmetric_W:bool):
@@ -494,7 +541,16 @@ class UQ_computer:
         ret = np.asarray([np.sum(1-_, axis=1) for _ in Ws])
         return ret.mean(1), ret
 
-
+    # semantic entropy using our alpha clustering approach
+    def get_alpha_semantic_entropy(self, num_gens:int, normalize:bool):
+        if self.likelihoods is None:
+            return None
+        semantic_set_ids = self._get_semantic_ids_using_alpha_clustering(num_gens)
+        nlls = self.likelihoods['generations|neg_log_likelihood'][:, :num_gens]
+        if normalize:
+            nlls = nlls / self.likelihoods['generations|length'][:, :num_gens]
+        return _hard_semantic_entropies(nlls, torch.tensor(semantic_set_ids))
+    
     # whitebox methods
     def get_semantic_entropy(self, num_gens:int, normalize:bool):
         if self.likelihoods is None:
@@ -551,6 +607,8 @@ def _compute_uq_cached(self:UQ_computer, key, uq_name, num_gens=20, metric_kwarg
         return self.get_fiedler_value(num_gens, metric_kwargs['eigv_threshold'], affinity_mode, temperature=metric_kwargs['temperature'])
     
     # whitebox
+    if uq_name.startswith("alphaSemanticEntropy"):
+        return self.get_alpha_semantic_entropy(num_gens, normalize=uq_name.split("|")[1] == 'norm')
     if uq_name.startswith("semanticEntropy"):
         return self.get_semantic_entropy(num_gens, normalize=uq_name.split("|")[1] == 'norm')
     if uq_name == 'self_prob':
@@ -585,6 +643,8 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
         # whitebox methods
         'semanticEntropy|unnorm',
         'self_prob',
+        #ours
+        'alphaSemanticEntropy|unnorm',
     ]
 
     tunable_hyperparams = {
@@ -608,7 +668,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
     }
 
     default_params = {'eigv_threshold': 0.9, 'temperature': 3.}
-    whitebox_uqs = ['semanticEntropy|unnorm', 'semanticEntropy|norm', 'self_prob', 'self_prob_nll']
+    whitebox_uqs = ['alphaSemanticEntropy|unnorm', 'alphaSemanticEntropy|norm', 'semanticEntropy|unnorm', 'semanticEntropy|norm', 'self_prob', 'self_prob_nll']
     def __init__(self, path, clean=False,
                  split=None, cal_size=None, seed=None, symmetric_laplacian=True, symmetric_W=True,
                  gpteval_examples = None) -> None:
@@ -791,7 +851,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
 
 if __name__ == '__main__':
     from _settings import GEN_PATHS
-    o = UQ_summ(GEN_PATHS['coqa']['llama-13b'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b']
+    o = UQ_summ(GEN_PATHS['triviaqa']['llama-13b'], clean=True, split='test', cal_size=2000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
     #res = o.get_uq('generations|rougeL|acc', num_gens=20)
     num_gens = 20
     summ_kwargs = {
@@ -821,10 +881,14 @@ if __name__ == '__main__':
     
         'semanticEntropy|unnorm', 
         'self_prob',
+
+        # ours with alpha clustering
+        'alphaSemanticEntropy|unnorm',
+        'alphaSemanticEntropy|norm'
     ], 
         
         acc_name='generations|deberta_entailment|acc', # rougeL|acc / gpt|acc / deberta_entailment|acc
         num_gens=num_gens, **summ_kwargs
     )
-    print(summ_obj.summ_overall('auarc')) # auarc/auroc/rej_acc
-    
+    print(summ_obj.summ_overall('rej_acc')) # auarc/auroc/rej_acc
+
