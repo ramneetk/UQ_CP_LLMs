@@ -93,9 +93,9 @@ def get_dataset(tokenizer, model_type='non_instruct', split='validation'):
             return {_:[] for _ in batch.keys()}
         id_mem.add(batch['question_id'][0])
         return batch
-    # commenting the orig following two lines as duplicate Qs (there are a lot: unique are 9960 and total with repetitions are 17944) were not removed from the validation set in conformal language modeling paper
-    #data = data.map(remove_dups, batch_size=1, batched=True, load_from_cache_file=False)
-    #assert pd.Series([_['question_id'] for _ in data]).value_counts().max() == 1
+    # comment the orig following two lines as duplicate Qs (there are a lot: unique are 9960 and total with repetitions are 17944) were not removed from the validation set in conformal language modeling paper for llama-13b model used in their paper
+    data = data.map(remove_dups, batch_size=1, batched=True, load_from_cache_file=False)
+    assert pd.Series([_['question_id'] for _ in data]).value_counts().max() == 1
     data = data.map(lambda _: process_data_to_model_inputs(_, tokenizer, model_type=model_type),
                             batched=True,
                             batch_size=10, # This does not matter
