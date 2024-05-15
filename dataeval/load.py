@@ -235,23 +235,3 @@ if __name__ == '__main__':
 
             # For evaluation of the generated responses
             read_rouges_new(path, parallel=True) # compute the rougeL scores
-
-
-# {
-#     "openai": {
-#         "organization": "sricsl",
-#         "apiKey": "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"
-#     }
-# }
-
-
-# {
-#     "openai": {
-#         "organization": "Personal",
-#         "apiKey": "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"
-#     }
-# }
-
-# my key: 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
-            
-# /homes/ramneet/.cache/persist_to_disk/cache/UQ-NLG-1/dataeval/load/read_lexical_sim does not exist. Creating it for persist_to_disk
