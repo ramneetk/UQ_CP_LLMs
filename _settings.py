@@ -19,14 +19,19 @@ os.makedirs(GENERATION_FOLDER, exist_ok=True)
 GEN_PATHS = {
     'coqa': {
         'llama-13b': f'{GENERATION_FOLDER}/llama-13b-hf_coqa_10/0.pkl', #llama-2-13B
-        #'mistral-7b': f'{GENERATION_FOLDER}/mistral-7b-hf_coqa_10/0.pkl', # added Mistral-7B-Instruct-v0.2
+        'llama-13b-hf': f'{GENERATION_FOLDER}/llama-13b-hf_coqa_10/0.pkl', #llama-2-13B
+        'mistral-7b': f'{GENERATION_FOLDER}/mistral-7b-hf_coqa_10/0.pkl', # added Mistral-7B-Instruct-v0.2
+        'mistral-7b-hf': f'{GENERATION_FOLDER}/mistral-7b-hf_coqa_10/0.pkl', # same as above
         ##'opt-13b': f'{GENERATION_FOLDER}/opt-13b_coqa_10/0.pkl',
         ##'gpt-3.5-turbo': f'{GENERATION_FOLDER}/gpt-3.5-turbo_coqa_10/0.pkl',
-    },
+   },
     'triviaqa': {
-         'llama-13b': f'{GENERATION_FOLDER}/llama-13b-hf_triviaqa_0/0.pkl',
-    #     'opt-13b': f'{GENERATION_FOLDER}/opt-13b_triviaqa_10/0.pkl',
-    #     'gpt-3.5-turbo': f'{GENERATION_FOLDER}/gpt-3.5-turbo_triviaqa_10/0.pkl',
+        'llama-13b': f'{GENERATION_FOLDER}/llama-13b-hf_triviaqa_0/0.pkl',
+        'llama-13b-hf': f'{GENERATION_FOLDER}/llama-13b-hf_triviaqa_0/0.pkl', # same as above
+        'mistral-7b': f'{GENERATION_FOLDER}/mistral-7b-hf_triviaqa_10/0.pkl',  # added Mistral-7B-Instruct-v0.2
+        'mistral-7b-hf': f'{GENERATION_FOLDER}/mistral-7b-hf_triviaqa_10/0.pkl', # same as above
+    #   'opt-13b': f'{GENERATION_FOLDER}/opt-13b_triviaqa_10/0.pkl',
+    #   'gpt-3.5-turbo': f'{GENERATION_FOLDER}/gpt-3.5-turbo_triviaqa_10/0.pkl',
     },
     # 'nq_open':{
     #     'llama-13b': f'{GENERATION_FOLDER}/llama-13b-hf_nq_open_10/0.pkl',
