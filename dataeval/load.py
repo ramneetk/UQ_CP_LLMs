@@ -101,8 +101,17 @@ def read_gpt_eval(path:str, clean=True, debug=False, parallel=False, ith=0, read
     file_name += f'{ith}'
     np.savez(file=file_name, evals=evals)
     ######################################################
-
     #evals = {k: {"id": k, "response": v.split(".")[0].split()[0]} for k, v in evals.items()}
+    # the following loop is a sanity check for GPT evaluations such as: '.com is MEERKOVO.\nRating: 100.', here v.split(".")[0]= ''
+    keys_of_items_to_be_removed_from_evals = []
+    for k, v in evals.items():
+        if len(v[0].split(".")[0].split()) == 0: 
+            keys_of_items_to_be_removed_from_evals.append(k)
+    keys_of_items_to_be_removed_from_evals = np.array(keys_of_items_to_be_removed_from_evals)
+    
+    for i,key in enumerate(keys_of_items_to_be_removed_from_evals):
+        del evals[key]
+
     evals = {k: {"id": k, "response": v[0].split(".")[0].split()[0]} for k, v in evals.items()} # v contains 3 items now: (top_output, [top 5 outputs], [prob of top 5 outputs])
     return evals
 
@@ -226,3 +235,23 @@ if __name__ == '__main__':
 
             # For evaluation of the generated responses
             read_rouges_new(path, parallel=True) # compute the rougeL scores
+
+
+# {
+#     "openai": {
+#         "organization": "sricsl",
+#         "apiKey": "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"
+#     }
+# }
+
+
+# {
+#     "openai": {
+#         "organization": "Personal",
+#         "apiKey": "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"
+#     }
+# }
+
+# my key: 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
+            
+# /homes/ramneet/.cache/persist_to_disk/cache/UQ-NLG-1/dataeval/load/read_lexical_sim does not exist. Creating it for persist_to_disk
