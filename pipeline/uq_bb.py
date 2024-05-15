@@ -210,6 +210,18 @@ def _hard_semantic_entropies(neg_log_likelihoods, semantic_set_ids, **kwargs):
         aggregated_likelihoods[:, semantic_set_id] = torch.logsumexp(temp, 1)
     return -_logmeanexp(aggregated_likelihoods, dim=1, ignore_negative_inf=True)
 
+def _hard_semantic_cluster_entropies(neg_log_likelihoods, semantic_set_ids, **kwargs):
+    num_samples, num_gens = neg_log_likelihoods.shape
+
+    log_likelihoods = -neg_log_likelihoods
+    # initilaize to -inf for all possible semantic ids
+    max_num_semantic_ids = semantic_set_ids.max().item() + 1 + 1
+    aggregated_likelihoods = torch.log(torch.zeros((num_samples, max_num_semantic_ids)))
+    for semantic_set_id in torch.unique(semantic_set_ids):
+        temp = torch.where(semantic_set_ids == semantic_set_id, log_likelihoods, -torch.inf)
+        aggregated_likelihoods[:, semantic_set_id] = torch.logsumexp(temp, 1)
+    return -1*aggregated_likelihoods 
+
 class UQ_computer:
     def __init__(self, path, clean=False,
                  split=None, cal_size=None, seed=None, symmetric_laplacian=True, symmetric_W=True) -> None:
@@ -551,6 +563,16 @@ class UQ_computer:
             nlls = nlls / self.likelihoods['generations|length'][:, :num_gens]
         return _hard_semantic_entropies(nlls, torch.tensor(semantic_set_ids))
     
+    def get_alpha_semantic_cluster_entropies(self, num_gens:int, normalize:bool):
+        if self.likelihoods is None:
+            return None
+        semantic_set_ids = self._get_semantic_ids_using_alpha_clustering(num_gens)
+        nlls = self.likelihoods['generations|neg_log_likelihood'][:, :num_gens]
+        if normalize:
+            nlls = nlls / self.likelihoods['generations|length'][:, :num_gens]
+        cluster_wise_entropies = _hard_semantic_cluster_entropies(nlls, torch.tensor(semantic_set_ids))
+        return torch.tensor(semantic_set_ids), cluster_wise_entropies
+
     # whitebox methods
     def get_semantic_entropy(self, num_gens:int, normalize:bool):
         if self.likelihoods is None:
@@ -609,6 +631,8 @@ def _compute_uq_cached(self:UQ_computer, key, uq_name, num_gens=20, metric_kwarg
     # whitebox
     if uq_name.startswith("alphaSemanticEntropy"):
         return self.get_alpha_semantic_entropy(num_gens, normalize=uq_name.split("|")[1] == 'norm')
+    if uq_name.startswith("PredictionSetsAlphaSemanticEntropy"):
+        return self.get_alpha_semantic_cluster_entropies(num_gens, normalize=uq_name.split("|")[1] == 'norm')
     if uq_name.startswith("semanticEntropy"):
         return self.get_semantic_entropy(num_gens, normalize=uq_name.split("|")[1] == 'norm')
     if uq_name == 'self_prob':
@@ -645,6 +669,9 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
         'self_prob',
         #ours
         'alphaSemanticEntropy|unnorm',
+        'alphaSemanticEntropy|norm',
+        'PredictionSetsAlphaSemanticEntropy|unnorm',
+        'PredictionSetsAlphaSemanticEntropy|norm'
     ]
 
     tunable_hyperparams = {
@@ -668,7 +695,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
     }
 
     default_params = {'eigv_threshold': 0.9, 'temperature': 3.}
-    whitebox_uqs = ['alphaSemanticEntropy|unnorm', 'alphaSemanticEntropy|norm', 'semanticEntropy|unnorm', 'semanticEntropy|norm', 'self_prob', 'self_prob_nll']
+    whitebox_uqs = ['alphaSemanticEntropy|unnorm', 'alphaSemanticEntropy|norm', 'PredictionSetsAlphaSemanticEntropy|unnorm', 'PredictionSetsAlphaSemanticEntropy|norm' 'semanticEntropy|unnorm', 'semanticEntropy|norm', 'self_prob', 'self_prob_nll']
     def __init__(self, path, clean=False,
                  split=None, cal_size=None, seed=None, symmetric_laplacian=True, symmetric_W=True,
                  gpteval_examples = None) -> None:
@@ -729,12 +756,22 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
             for ith in range(len(self.generations[0]['generations']['text'])):
                 try:
                     gpt_eval = dload.read_gpt_eval(self.path, clean=clean, debug=False, read_only=True, ith=ith)
-                    ret[ith] = [gpt_eval[id] for id in self.ids] # originally: ret[ith] = [gpt_eval[_id] for _id in self.ids]
+                    ##### HARDCODING THE ID for TRIVIAQA on MISTRAL WHERE GPT COULD NOT GENERATE CORRECT EVALUATION (FORMAT): '.com is MEERKOVO.\nRating: 100.', expected was '100. blah blah' ########
+                    id_set = []
+                    for idx, id in enumerate(self.ids):
+                        if id == 'sfq_11335':
+                            continue
+                        else:
+                            id_set.append(id)
+                    
+                    ret[ith] = [gpt_eval[id] for id in id_set] # originally: ret[ith] = [gpt_eval[_id] for _id in self.ids]
                 except Exception as err:
                     break
         return ret
 
     def get_uq(self, name='', num_gens=20, cache=None, **kwargs):
+        if name.startswith("PredictionSetsAlphaSemanticEntropy"):
+            return _compute_uq_cached(self, self.key, name, num_gens=num_gens, metric_kwargs=kwargs, cache=cache)
         if cache is None:
             cache = ptd.NOCACHE if name in {'generations|eigent', 'debug'} else ptd.CACHE
         if self.path is None:
@@ -815,32 +852,43 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
         return dict(best_params)
 
     def summ(self, uq_names, acc_name:str, num_gens=20, uq_kwargs:dict=None, overall=False, use_conf=True):
-        if uq_kwargs is None:
-            uq_kwargs = {}
-            if len(self.key) > 2:
-                assert self.key[2] == 'test'
-                self2 = self.__class__(self.path, self.key[1], 'val', self.key[3], self.key[4])
-                self2.tunable_hyperparams = {k:v for k, v in self.tunable_hyperparams.items() if k in uq_names}
-                self2.symmetric_laplacian = self.symmetric_laplacian
-                self2.symmetric_W = self.symmetric_W
-                # this takes time if not run load before
-                tuned_hyperparams = self2._tune_params(num_gens=num_gens,
-                                                         metric=acc_name,
-                                                         overall=overall, use_conf=use_conf, curve='auarc')
-                uq_kwargs.update(tuned_hyperparams)
-            else:
-                uq_kwargs.update(self._get_default_params())
-        if isinstance(uq_names, str):
-            uq_names = [uq_names]
-        print("*******DONE TUNING HYPERPARAMS*********")
-        print("Tuned hyperparameters: ", tuned_hyperparams)
-        global FLAG
-        FLAG = True
-        summ_obj = eval_uq.Summarizer({_: self.get_uq(_, num_gens, **uq_kwargs.get(_,{})) for _ in uq_names},
-                                      #{_: self.get_acc(_) for _ in acc_names},
-                                      self.get_acc(acc_name),
-                                      lengths = self.get_length(num_gens)[1])
-        return summ_obj
+        if uq_names[0].startswith("PredictionSetsAlphaSemanticEntropy"): # assuming that whenever we call get semantic prediction sets, uq_names will only contain (as first element) PredictionSetsAlphaSemanticEntropy
+            # validation/calibration set statistics
+            self2 = self.__class__(self.path, self.key[1], 'val', self.key[3], self.key[4])
+            semantic_set_ids, cluster_wise_entropies = self2.get_uq(name=uq_names[0], num_gens=num_gens)
+            _, individual_accuracy = self2.get_acc(acc_name)
+            #pdb.set_trace()
+            # test set statistics
+            self2 = self.__class__(self.path, self.key[1], 'test', self.key[3], self.key[4])
+            semantic_set_ids, cluster_wise_entropies = self2.get_uq(name=uq_names[0], num_gens=num_gens)
+            _, individual_accuracy = self2.get_acc(acc_name)
+        else:    
+            if uq_kwargs is None:
+                uq_kwargs = {}
+                if len(self.key) > 2:
+                    assert self.key[2] == 'test'
+                    self2 = self.__class__(self.path, self.key[1], 'val', self.key[3], self.key[4])
+                    self2.tunable_hyperparams = {k:v for k, v in self.tunable_hyperparams.items() if k in uq_names}
+                    self2.symmetric_laplacian = self.symmetric_laplacian
+                    self2.symmetric_W = self.symmetric_W
+                    # this takes time if not run load before
+                    tuned_hyperparams = self2._tune_params(num_gens=num_gens,
+                                                            metric=acc_name,
+                                                            overall=overall, use_conf=use_conf, curve='auarc')
+                    uq_kwargs.update(tuned_hyperparams)
+                else:
+                    uq_kwargs.update(self._get_default_params())
+            if isinstance(uq_names, str):
+                uq_names = [uq_names]
+            print("*******DONE TUNING HYPERPARAMS*********")
+            print("Tuned hyperparameters: ", tuned_hyperparams)
+            global FLAG
+            FLAG = True
+            summ_obj = eval_uq.Summarizer({_: self.get_uq(_, num_gens, **uq_kwargs.get(_,{})) for _ in uq_names},
+                                        #{_: self.get_acc(_) for _ in acc_names},
+                                        self.get_acc(acc_name),
+                                        lengths = self.get_length(num_gens)[1])
+            return summ_obj
 
     def _get_default_params(self, ):
         hyparams = {}
@@ -851,7 +899,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
 
 if __name__ == '__main__':
     from _settings import GEN_PATHS
-    o = UQ_summ(GEN_PATHS['triviaqa']['llama-13b'], clean=True, split='test', cal_size=2000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
+    o = UQ_summ(GEN_PATHS['triviaqa']['mistral-7b'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
     #res = o.get_uq('generations|rougeL|acc', num_gens=20)
     num_gens = 20
     summ_kwargs = {
@@ -860,8 +908,6 @@ if __name__ == '__main__':
         'c+ia': {'overall': False, 'use_conf': True},
     }['c+ia']
     summ_obj = o.summ([
-        'generations|numsets', 'lexical_sim',
-    
         'generations|spectral_eigv_clip|disagreement_w',
         'generations|eccentricity|disagreement_w', # problematic for directed with random/lazy walk
         ##'generations|density|disagreement_w'
@@ -880,11 +926,14 @@ if __name__ == '__main__':
         'generations|degree|jaccard',
     
         'semanticEntropy|unnorm', 
+        'generations|numsets', 'lexical_sim',
         'self_prob',
 
         # ours with alpha clustering
         'alphaSemanticEntropy|unnorm',
-        'alphaSemanticEntropy|norm'
+        'alphaSemanticEntropy|norm',
+        # for prediction sets
+        #'PredictionSetsAlphaSemanticEntropy|unnorm',
     ], 
         
         acc_name='generations|deberta_entailment|acc', # rougeL|acc / gpt|acc / deberta_entailment|acc
