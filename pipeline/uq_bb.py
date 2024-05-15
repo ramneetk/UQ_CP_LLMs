@@ -909,20 +909,15 @@ if __name__ == '__main__':
     }['c+ia']
     summ_obj = o.summ([
         'generations|spectral_eigv_clip|disagreement_w',
-        'generations|eccentricity|disagreement_w', # problematic for directed with random/lazy walk
-        ##'generations|density|disagreement_w'
-        ##'generations|fiedler|disagreement_w',
+        'generations|eccentricity|disagreement_w',
         'generations|degree|disagreement_w',
 
-        'generations|spectral_eigv_clip|agreement_w', # problematic for directed with random/lazy walk
-        'generations|eccentricity|agreement_w', # problematic for directed with random/lazy walk
-        ##'generations|density|agreement_w',
-        ##'generations|fiedler|agreement_w',
+        'generations|spectral_eigv_clip|agreement_w', 
+        'generations|eccentricity|agreement_w', 
         'generations|degree|agreement_w',
 
         'generations|spectral_eigv_clip|jaccard', 
         'generations|eccentricity|jaccard',
-        ##'generations|density|jaccard', 
         'generations|degree|jaccard',
     
         'semanticEntropy|unnorm', 
@@ -932,7 +927,7 @@ if __name__ == '__main__':
         # ours with alpha clustering
         'alphaSemanticEntropy|unnorm',
         'alphaSemanticEntropy|norm',
-        # for prediction sets
+        # for prediction sets - currently working on this
         #'PredictionSetsAlphaSemanticEntropy|unnorm',
     ], 
         
