@@ -10,12 +10,14 @@ import torch
 import tqdm
 from scipy.special import softmax
 
+# import sys
+# sys.path.append('/WorkSpace-2/csamplawski/src/UQ-NLG')
 import _settings
 import dataeval.load as dload
 import pipeline.clustering as pc
 import pipeline.eval_uq as eval_uq
 
-from sement.cluster.seq_clustering import alpha_clustering
+from sement.seq_clustering import alpha_clustering
 from sklearn.cluster import DBSCAN
 
 import pdb
@@ -171,13 +173,20 @@ def _create_alpha_semantic_sets(sample):
     cls_probs = torch.softmax(cls_logits, dim=-1)
     entailment_probs = cls_probs[0:len(cls_probs), 0:len(cls_probs), -1]
     entailment_probs = torch.max(entailment_probs, entailment_probs.T) #OR
-    clusters_alpha = alpha_clustering(entailment_probs, alpha=0.5)
-        
-    distance = 1 - entailment_probs
-    dbscan = DBSCAN(metric='precomputed')
-    clusters_assignments_dbscan = dbscan.fit_predict(distance.cpu().numpy())
 
-    list_of_semantic_set_ids = [clusters_assignments_dbscan[x] for x in generated_texts] # this step is for allocating same cluster to the same/repeated answer
+    clusters_alpha = alpha_clustering(entailment_probs, alpha=0.1)
+
+    num_elements = len(cls_probs)
+    cluster_assignments = torch.zeros(num_elements)
+    for i, cluster in enumerate(clusters_alpha):
+        for element in cluster:
+            cluster_assignments[element] = i
+
+    list_of_semantic_set_ids = [cluster_assignments[x] for x in generated_texts] 
+    # distance = 1 - entailment_probs
+    # dbscan = DBSCAN(metric='precomputed')
+    # clusters_assignments_dbscan = dbscan.fit_predict(distance.cpu().numpy())
+    # list_of_semantic_set_ids = [clusters_assignments_dbscan[x] for x in generated_texts] # this step is for allocating same cluster to the same/repeated answer
     # map according to the order of appearance
     _map = defaultdict(int)
     ret = []
@@ -363,7 +372,6 @@ class UQ_computer:
                 'mapping': _['mapping'][:num_gens], # mapping is unique answer ID, so shape = num_gens
                 'sim_mat': _['sim_mat'], # sim_mat is similarity between unique answers, so if no. of unique answers = 15, then shape will be 15X15X3
                 } for _ in self.similarities]
-        
         return [_create_alpha_semantic_sets(_) for _ in sims]
         
 
@@ -899,7 +907,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
 
 if __name__ == '__main__':
     from _settings import GEN_PATHS
-    o = UQ_summ(GEN_PATHS['triviaqa']['mistral-7b'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
+    o = UQ_summ(GEN_PATHS['triviaqa']['llama-13b'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
     #res = o.get_uq('generations|rougeL|acc', num_gens=20)
     num_gens = 20
     summ_kwargs = {
@@ -908,21 +916,22 @@ if __name__ == '__main__':
         'c+ia': {'overall': False, 'use_conf': True},
     }['c+ia']
     summ_obj = o.summ([
-        'generations|spectral_eigv_clip|disagreement_w',
-        'generations|eccentricity|disagreement_w',
-        'generations|degree|disagreement_w',
+        # 'generations|spectral_eigv_clip|disagreement_w',
+        # 'generations|eccentricity|disagreement_w',
+        # 'generations|degree|disagreement_w',
 
-        'generations|spectral_eigv_clip|agreement_w', 
-        'generations|eccentricity|agreement_w', 
-        'generations|degree|agreement_w',
+        # 'generations|spectral_eigv_clip|agreement_w', 
+        # 'generations|eccentricity|agreement_w', 
+        # 'generations|degree|agreement_w',
 
-        'generations|spectral_eigv_clip|jaccard', 
-        'generations|eccentricity|jaccard',
-        'generations|degree|jaccard',
+        # 'generations|spectral_eigv_clip|jaccard', 
+        # 'generations|eccentricity|jaccard',
+        # 'generations|degree|jaccard',
     
-        'semanticEntropy|unnorm', 
-        'generations|numsets', 'lexical_sim',
-        'self_prob',
+        # 'semanticEntropy|unnorm', 
+        # 'generations|numsets', 
+        # 'lexical_sim',
+        # 'self_prob',
 
         # ours with alpha clustering
         'alphaSemanticEntropy|unnorm',
@@ -931,7 +940,8 @@ if __name__ == '__main__':
         #'PredictionSetsAlphaSemanticEntropy|unnorm',
     ], 
         
-        acc_name='generations|deberta_entailment|acc', # rougeL|acc / gpt|acc / deberta_entailment|acc
+        acc_name='generations|gpt|acc',
+        #acc_name='generations|deberta_entailment|acc', # rougeL|acc / gpt|acc / deberta_entailment|acc
         num_gens=num_gens, **summ_kwargs
     )
     print(summ_obj.summ_overall('rej_acc')) # auarc/auroc/rej_acc
