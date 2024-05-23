@@ -1,0 +1,13 @@
+datasets
+pandas
+torch
+tqdm
+sentencepiece
+transformers[sentencepiece]
+accelerate
+numpy
+langchain
+ipdb
+openai
+persist_to_disk
+

@@ -30,6 +30,8 @@ def _load_pretrained_model(model_name, device, torch_dtype=torch.float16):
         #     bnb_4bit_quant_type="nf4",
         #     bnb_4bit_compute_dtype=torch.float16
         # ))
+    else:
+        raise ValueError(f"No matching {model_name} found in _load_pretrained_model")
     model.to(device)
     return model
 
@@ -59,5 +61,5 @@ def _load_pretrained_tokenizer(model_name, use_fast=False):
         tokenizer.pad_token_id = tokenizer.eos_token_id
         tokenizer.pad_token = tokenizer.eos_token
     elif model_name == 'Meta-Llama-3-8B-Instruct':
-        tokenizer = AutoTokenizer.from_pretrained(os.path.join(LLAMA_PATH, model_name))
+        tokenizer = AutoTokenizer.from_pretrained(os.path.join(LLAMA_PATH, model_name), cache_dir=None, use_fast=use_fast)
     return tokenizer
