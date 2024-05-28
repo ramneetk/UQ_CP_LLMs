@@ -19,6 +19,17 @@ inst_prompt = PromptTemplate(
     [/INST]"""
 )
 
+llama3_prompt = PromptTemplate(
+    input_variables=["story", "question"],
+    template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+        Output the shortest answer possible to the following question based on the story.
+        Output the answer only with no additional text.
+        story = {story}
+        question = {question}
+    <|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+)
+
+
 def _save_dataset():
     # https://github.com/lorenzkuhn/semantic_uncertainty/blob/main/code/parse_coqa.py
     save_path = f'{_settings.DATA_FOLDER}/coqa_dataset'
@@ -81,8 +92,10 @@ def get_dataset(tokenizer, split='validation', model_type='non_instruct'):
         if model_type == 'non_instruct': # for non_instruction model such as llama
             example['prompt'] = prompt = example['story'] + ' Q: ' + example['question'] + ' A:'
         else: # for instruction model such as mistral
-            example['prompt'] = prompt = inst_prompt.format(story=example['story'], question=example['question'])
-
+            if tokenizer.__class__.__name__ == 'PreTrainedTokenizerFast': # for llama3 instruct model
+                example['prompt'] = prompt = llama3_prompt.format(story=example['story'], question=example['question'])
+            else: # for any other instruct model
+                example['prompt'] = prompt = inst_prompt.format(story=example['story'], question=example['question'])
         return tokenizer(prompt, truncation=False, padding=False)
 
 
