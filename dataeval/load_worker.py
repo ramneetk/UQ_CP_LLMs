@@ -116,8 +116,9 @@ def _clean_sample(sample, tokenizer):
                     token_cleaned=token_ids.cpu(),
                     text=old_text,
                     token=old_token_ids.cpu(),
+                    reverse_prompt_nlls=sample.get('reverse_prompt_nlls', None),
                     )
-    ret = {k: sample[k] for k in ['prompt', 'id', 'question', 'answer', 'additional_answers']}
+    ret = {k: sample[k] for k in ['prompt', 'id', 'question', 'answer', 'additional_answers', 'reverse_prompt_nlls']}
     ret['generations'] = [None] * len(sample['generations'])
     if tokenizer is None:
         for i, generation in enumerate(sample['generations']):
@@ -279,7 +280,7 @@ def _get_loglikelihoods(samples, model, tokenizer, clean:bool, logger=None):
     ret = []
     for sample in tqdm.tqdm(samples):
         curr_summ = {'id': sample['id']}
-
+        
         prompt = sample['prompt'].to(model.device)
         assert prompt.ne(tokenizer.pad_token_id).all() and len(prompt.shape) == 1
         curr_summ['prompt'] = _create_output_prompt(model, tokenizer, prompt)
@@ -288,6 +289,9 @@ def _get_loglikelihoods(samples, model, tokenizer, clean:bool, logger=None):
         curr_summ['generations'] = {k: [_[k] for _ in sampled_summ] for k in sampled_summ[0].keys()}
         for _ in ['sequence_embedding', 'unconditioned_sequence_embedding']:
             curr_summ['generations'][_] = torch.stack(curr_summ['generations'][_])
+        reverse_prompt_nlls = sample.get('reverse_prompt_nlls', None)
+        if reverse_prompt_nlls is not None:
+            curr_summ['generations']['neg_log_likelihood'] = reverse_prompt_nlls.cpu().numpy().tolist()
         ret.append(curr_summ)
     return ret
 

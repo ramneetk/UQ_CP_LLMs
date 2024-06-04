@@ -18,6 +18,9 @@ DEFAULT_DEVICE = 'cuda:2'
 IGNORE_INDEX = -100
 
 def _get_model_name(path:str):
+    if 'reverse_prompt_results' in path:
+        model_name = path.split('/')[-3].split('_')[0]
+        return model_name
     base_fnames = os.path.basename(path).split("_")
     if base_fnames[-1] == 'generations.pkl':
         return base_fnames[0]
@@ -40,7 +43,8 @@ def read_cleaned_outputs_new(path):
     cleaned_sequences = ptd.manual_cache(key)
     if cleaned_sequences is None:
         sequences = utils.cached_read_pickle(path)
-        tokenizer = models.load_tokenizer(_get_model_name(path))
+        model_name = _get_model_name(path)
+        tokenizer = models.load_tokenizer(model_name)
         cleaned_sequences = [lw._clean_sample(sample, tokenizer) for sample in tqdm.tqdm(sequences)]
         ptd.manual_cache(key, obj=cleaned_sequences, write=True)
     return cleaned_sequences
@@ -219,8 +223,8 @@ if __name__ == '__main__':
             read_semantic_similarities_new(path, device=device)
 
             ###### UNCOMMENT LATER: COMMENTING GPT EVAL FOR NOW #########
-            for ith in tqdm.tqdm(range(20)): # 20 generations in total
-                read_gpt_eval(path, ith=ith) # evaluate the accuracy of the responses
+            #for ith in tqdm.tqdm(range(20)): # 20 generations in total
+            #    read_gpt_eval(path, ith=ith) # evaluate the accuracy of the responses
 
             # the lexical similarity baseline
             ## UNCOMMENT ##

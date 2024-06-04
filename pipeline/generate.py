@@ -13,7 +13,11 @@ import os
 import pandas as pd
 import torch
 import tqdm
+from tqdm import trange
 import transformers
+
+import sys
+sys.path.append('/WorkSpace-2/csamplawski/src/UQ-NLG')
 
 import _settings
 import dataeval.coqa as coqa
@@ -232,7 +236,7 @@ def get_generations(model_name:str, args, seed=10, old_sequences=None, max_num_g
         generations_file = open(generations_file_path, 'rb')
         generated_file_contents = pickle.load(generations_file)
 
-        for idx in range(len(generated_file_contents)): # for each question in the dataset
+        for idx in trange(len(generated_file_contents)):
             saved_generations_content = generated_file_contents[idx] # generated_answers is a dictionary with these keys: 'prompt', 'id', 'question', 'answer', 'additional_answers', 'most_likely_generation_ids', 'generations_ids', 'most_likely_generation', 'generations'
             id = saved_generations_content['id']
             question = saved_generations_content['question']
@@ -242,6 +246,7 @@ def get_generations(model_name:str, args, seed=10, old_sequences=None, max_num_g
             most_likely_generations = [] # we do not require most likely generations but save it to be compatible with the original code (Jimeng's data generation code)
             generations = []
             all_input_ids = []
+            nll_vals = []
 
             for res_idx in range(args.num_generations_per_prompt): # iterating over each generated answer for the question
                 generated_answer = saved_generations_content['generations'][res_idx] 
@@ -264,42 +269,56 @@ def get_generations(model_name:str, args, seed=10, old_sequences=None, max_num_g
                 attention_mask = [input_ids_attention_mask['attention_mask']] # input to model is in a batch, here batch length = 1
                 attention_mask = torch.tensor(attention_mask)
                 attention_mask = attention_mask.to(device)
+
+                correct_gen = question + tokenizer.eos_token
                 
                 assert len(input_ids.shape) == 2 # input_ids is in a batch
                 input_length = input_ids.shape[1]
                 generation_config = get_generation_config(input_ids, tokenizer, args.dataset)
                 generation_config = transformers.GenerationConfig(**generation_config)
 
-                _ = model.generate(input_ids, attention_mask=attention_mask, num_beams=1, num_return_sequences=1, do_sample=True, top_p=args.top_p, top_k=args.top_k, temperature=args.temperature, generation_config=generation_config) # num_return_sequences will be 1 here as it is a different prompt for each generated answer unlike the original settings
-                generations.append(_[:, input_length:].cpu())
+                model_output = model(input_ids=input_ids, attention_mask=attention_mask)
+                correct_ids = tokenizer(correct_gen, return_tensors='pt')['input_ids'].to(device)
+                # correct_attention_mask = torch.ones_like(correct_ids).to(device)
+                loss = model(input_ids=correct_ids, 
+                             labels=correct_ids,
+                             past_key_values=model_output['past_key_values'])
+
+                # _ = model.generate(input_ids, attention_mask=attention_mask, num_beams=1, num_return_sequences=1, do_sample=True, top_p=args.top_p, top_k=args.top_k, temperature=args.temperature, generation_config=generation_config) # num_return_sequences will be 1 here as it is a different prompt for each generated answer unlike the original settings
+                generations.append(correct_ids.cpu())
                 all_input_ids.append(input_ids.cpu()[0])
+                nll_vals.append(loss['loss'].item())
+            
+            curr_seq = saved_generations_content
+            curr_seq['reverse_prompt_nlls'] = torch.tensor(nll_vals)
+             
+            # generations = torch.nested.nested_tensor(generations).to_padded_tensor(tokenizer.eos_token_id)
+            # generations = generations.reshape(-1, generations.shape[-1])[:args.num_generations_per_prompt]
+            # generated_texts = [tokenizer.decode(_, skip_special_tokens=True) for _ in generations]
+            # nll_vals = torch.tensor(nll_vals)
 
-        
-            generations = torch.nested.nested_tensor(generations).to_padded_tensor(tokenizer.eos_token_id)
-            generations = generations.reshape(-1, generations.shape[-1])[:args.num_generations_per_prompt]
-            generated_texts = [tokenizer.decode(_, skip_special_tokens=True) for _ in generations]
-            pdb.set_trace()
+            # all_input_ids = torch.nested.nested_tensor(all_input_ids).to_padded_tensor(tokenizer.eos_token_id)
 
-            # remember the data
-            curr_seq = dict(
-                prompt=all_input_ids, # this is different from direct prompt as input_ids is same for all generations but here input_id (or tokenized prompt) will be different for each reverse prompt with the different generated answer. So it will be a list of 20 prompts here 
-                id=id, # id of the original question from the dataset
-                question=question, # original question from the dataset
-                answer=answer, # original GT answer from the dataset
-                additional_answers=additional_answers, # original additional answers from the dataset
-            )
-            curr_seq.update(
-                dict(
-                    most_likely_generation_ids = most_likely_generations,
-                    generations_ids=generations,
-                )
-            )
-            curr_seq.update(
-                dict(
-                    most_likely_generation=tokenizer.decode(curr_seq['most_likely_generation_ids'], skip_special_tokens=True),
-                    generations=generated_texts,
-                )
-            )
+            # curr_seq = dict(
+                # prompt=all_input_ids, # list of prompts unlike direct prompt, each prompt is different in the reverse case
+                # id=id, # id of the original question from the dataset
+                # question=question, # original question from the dataset
+                # answer=answer, # original GT answer from the dataset
+                # additional_answers=additional_answers, # original additional answers from the dataset
+            # )
+            # curr_seq.update(
+                # dict(
+                    # most_likely_generation_ids = most_likely_generations,
+                    # generations_ids=generations,
+                # )
+            # )
+            # curr_seq.update(
+                # dict(
+                    # most_likely_generation=tokenizer.decode(curr_seq['most_likely_generation_ids'], skip_special_tokens=True),
+                    # generations=generated_texts,
+                # )
+            # )
+            # curr_seq['nll_vals'] = nll_vals
             sequences.append(curr_seq)
 
     return sequences
