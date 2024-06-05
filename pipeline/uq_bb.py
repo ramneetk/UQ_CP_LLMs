@@ -174,9 +174,7 @@ def _create_alpha_semantic_sets(sample):
     entailment_probs = cls_probs[0:len(cls_probs), 0:len(cls_probs), -1]
     entailment_probs = torch.max(entailment_probs, entailment_probs.T) #OR
 
-
-    clusters_alpha = alpha_clustering(entailment_probs, alpha=0.1)
-
+    clusters_alpha = alpha_clustering(entailment_probs, alpha=0.5)
     num_elements = len(cls_probs)
     cluster_assignments = torch.zeros(num_elements)
     for i, cluster in enumerate(clusters_alpha):
@@ -192,9 +190,9 @@ def _create_alpha_semantic_sets(sample):
     _map = defaultdict(int)
     ret = []
     for i, ans in enumerate(list_of_semantic_set_ids):
-        if ans not in _map:
-            _map[ans] = len(_map)
-        ret.append(_map[ans])
+        if ans.item() not in _map:
+            _map[ans.item()] = len(_map)
+        ret.append(_map[ans.item()])
 
     return ret
 
