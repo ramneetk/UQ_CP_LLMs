@@ -10,8 +10,8 @@ import torch
 import tqdm
 from scipy.special import softmax
 
-# import sys
-# sys.path.append('/WorkSpace-2/csamplawski/src/UQ-NLG')
+import sys
+sys.path.append('/WorkSpace-2/csamplawski/src/UQ-NLG')
 import _settings
 import dataeval.load as dload
 import pipeline.clustering as pc
@@ -174,8 +174,7 @@ def _create_alpha_semantic_sets(sample):
     entailment_probs = cls_probs[0:len(cls_probs), 0:len(cls_probs), -1]
     entailment_probs = torch.max(entailment_probs, entailment_probs.T) #OR
 
-    clusters_alpha = alpha_clustering(entailment_probs, alpha=0.1)
-
+    clusters_alpha = alpha_clustering(entailment_probs, alpha=0.5)
     num_elements = len(cls_probs)
     cluster_assignments = torch.zeros(num_elements)
     for i, cluster in enumerate(clusters_alpha):
@@ -191,9 +190,9 @@ def _create_alpha_semantic_sets(sample):
     _map = defaultdict(int)
     ret = []
     for i, ans in enumerate(list_of_semantic_set_ids):
-        if ans not in _map:
-            _map[ans] = len(_map)
-        ret.append(_map[ans])
+        if ans.item() not in _map:
+            _map[ans.item()] = len(_map)
+        ret.append(_map[ans.item()])
 
     return ret
 
@@ -298,7 +297,7 @@ class UQ_computer:
     def likelihoods(self):
         assert self.path is not None, "likelihoods are not available for black-box data"
         print("load likelihoods")
-        likelihoods = dload.read_loglikelihoods_and_more_new(self.path, clean=self.key[1], debug=False)
+        likelihoods = dload.read_loglikelihoods_and_more_new(self.path, device=DEVICE, clean=self.key[1], debug=False)
         if likelihoods is not None:
             likelihoods = {_['id']: _ for _ in likelihoods}
             likelihoods = [likelihoods[_] for _ in self.ids]
@@ -907,7 +906,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
 
 if __name__ == '__main__':
     from _settings import GEN_PATHS
-    o = UQ_summ(GEN_PATHS['triviaqa']['llama-13b'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
+    o = UQ_summ(GEN_PATHS['coqa']['llama-13b-hf'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
     #res = o.get_uq('generations|rougeL|acc', num_gens=20)
     num_gens = 20
     summ_kwargs = {
@@ -928,7 +927,7 @@ if __name__ == '__main__':
         # 'generations|eccentricity|jaccard',
         # 'generations|degree|jaccard',
     
-        # 'semanticEntropy|unnorm', 
+        'semanticEntropy|unnorm', 
         # 'generations|numsets', 
         # 'lexical_sim',
         # 'self_prob',
@@ -940,7 +939,7 @@ if __name__ == '__main__':
         #'PredictionSetsAlphaSemanticEntropy|unnorm',
     ], 
         
-        acc_name='generations|gpt|acc',
+        acc_name='generations|deberta_entailment|acc',
         #acc_name='generations|deberta_entailment|acc', # rougeL|acc / gpt|acc / deberta_entailment|acc
         num_gens=num_gens, **summ_kwargs
     )

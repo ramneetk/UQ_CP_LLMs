@@ -21,7 +21,8 @@ def _load_pretrained_model(model_name, device, torch_dtype=torch.float16):
     elif model_name == 'roberta-large-mnli':
          model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli")#, torch_dtype=torch_dtype)
     elif model_name == 'mistral-7b-hf': 
-        model = AutoModelForCausalLM.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
+        # model = AutoModelForCausalLM.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
+        model = AutoModelForCausalLM.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', cache_dir=None, torch_dtype=torch_dtype)
         # trust_remote_code=True,
         # low_cpu_mem_usage=True,
         # quantization_config=BitsAndBytesConfig(
@@ -38,6 +39,7 @@ def _load_pretrained_model(model_name, device, torch_dtype=torch.float16):
 
 @functools.lru_cache()
 def _load_pretrained_tokenizer(model_name, use_fast=False):
+    print(model_name)
     if model_name.startswith('facebook/opt-'):
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=use_fast)
     elif model_name == "microsoft/deberta-large-mnli":
@@ -53,7 +55,8 @@ def _load_pretrained_tokenizer(model_name, use_fast=False):
         tokenizer.pad_token_id = tokenizer.eos_token_id
         tokenizer.pad_token = tokenizer.eos_token
     elif model_name == 'mistral-7b-hf':
-        tokenizer = AutoTokenizer.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, use_fast=use_fast)
+        #tokenizer = AutoTokenizer.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, use_fast=use_fast)
+        tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', cache_dir=None, use_fast=use_fast)
         tokenizer.eos_token_id = 2
         tokenizer.bos_token_id = 1
         tokenizer.eos_token = tokenizer.decode(tokenizer.eos_token_id)
