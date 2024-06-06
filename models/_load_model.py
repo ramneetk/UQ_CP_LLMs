@@ -16,7 +16,7 @@ def _load_pretrained_model(model_name, device, torch_dtype=torch.float16):
         model = OPTForCausalLM.from_pretrained(model_name, torch_dtype=torch_dtype)
     elif model_name == "microsoft/deberta-large-mnli":
         model = AutoModelForSequenceClassification.from_pretrained("microsoft/deberta-large-mnli")#, torch_dtype=torch_dtype)
-    elif model_name == 'llama-7b-hf' or model_name == 'llama-13b-hf':
+    elif model_name in ['llama-7b-hf', 'llama-13b-hf', 'Meta-Llama-3-8B-Instruct']:
         model = AutoModelForCausalLM.from_pretrained(os.path.join(LLAMA_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
     elif model_name == 'roberta-large-mnli':
          model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli")#, torch_dtype=torch_dtype)
@@ -31,6 +31,8 @@ def _load_pretrained_model(model_name, device, torch_dtype=torch.float16):
         #     bnb_4bit_quant_type="nf4",
         #     bnb_4bit_compute_dtype=torch.float16
         # ))
+    else:
+        raise ValueError(f"No matching {model_name} found in _load_pretrained_model")
     model.to(device)
     return model
 
@@ -61,4 +63,6 @@ def _load_pretrained_tokenizer(model_name, use_fast=False):
         tokenizer.bos_token = tokenizer.decode(tokenizer.bos_token_id)
         tokenizer.pad_token_id = tokenizer.eos_token_id
         tokenizer.pad_token = tokenizer.eos_token
+    elif model_name == 'Meta-Llama-3-8B-Instruct':
+        tokenizer = AutoTokenizer.from_pretrained(os.path.join(LLAMA_PATH, model_name), cache_dir=None, use_fast=use_fast)
     return tokenizer

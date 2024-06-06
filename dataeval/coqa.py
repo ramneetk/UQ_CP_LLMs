@@ -19,6 +19,17 @@ inst_prompt = PromptTemplate(
     [/INST]"""
 )
 
+llama3_prompt = PromptTemplate(
+    input_variables=["story", "question"],
+    template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+        Output the shortest answer possible to the following question based on the story.
+        Output the answer only with no additional text.
+        story = {story}
+        question = {question}
+    <|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+)
+
+
 def _save_dataset():
     # https://github.com/lorenzkuhn/semantic_uncertainty/blob/main/code/parse_coqa.py
     save_path = f'{_settings.DATA_FOLDER}/coqa_dataset'
@@ -81,8 +92,10 @@ def get_dataset(tokenizer, split='validation', model_type='non_instruct'):
         if model_type == 'non_instruct': # for non_instruction model such as llama
             example['prompt'] = prompt = example['story'] + ' Q: ' + example['question'] + ' A:'
         else: # for instruction model such as mistral
-            example['prompt'] = prompt = inst_prompt.format(story=example['story'], question=example['question'])
-
+            if tokenizer.__class__.__name__ == 'PreTrainedTokenizerFast': # for llama3 instruct model
+                example['prompt'] = prompt = llama3_prompt.format(story=example['story'], question=example['question'])
+            else: # for any other instruct model
+                example['prompt'] = prompt = inst_prompt.format(story=example['story'], question=example['question'])
         return tokenizer(prompt, truncation=False, padding=False)
 
 
@@ -99,12 +112,21 @@ def _generate_config(tokenizer):
         #eos_token_id = [tokenizer(_)['input_ids'] for _ in ['\n', ',', '.']]
     elif tokenizer.__class__.__name__ == 'GPT2Tokenizer':
         eos_token_id = [tokenizer.encode(_)[1] for _ in ['.', '\n']]
+    # Llama 3 class name is PreTrainedTokenizerFast
+    elif tokenizer.__class__.__name__ == 'PreTrainedTokenizerFast':
+        eos_token_id = []
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"Tokenizer was {tokenizer.__class__.__name__}")
     eos_token_id += [tokenizer.eos_token_id]
+
+    # Llama 3 class name is PreTrainedTokenizerFast
+    if tokenizer.__class__.__name__ == 'PreTrainedTokenizerFast':
+        eos_token_id += [tokenizer.convert_tokens_to_ids("<|eot_id|>")]
+
     question_framing_ids = ['Question:', ' Question:', '\n', 'Answer:', ' Answer:', 'Q:']
     # Follows Kuhn et al 2023 as Llama does not have CoQA
-    question_framing_ids = [[tokenizer(eos_token)['input_ids'][1]] for eos_token in question_framing_ids]
+    # Changed index from [1] to [-1] because most 'input_ids' lists have two values, but '\n' only has 1 with Llama3
+    question_framing_ids = [[tokenizer(eos_token)['input_ids'][-1]] for eos_token in question_framing_ids]
     return dict(eos_token_id=eos_token_id, bad_words_ids=question_framing_ids)
 
 if __name__ == '__main__':

@@ -10,27 +10,52 @@ import ipdb
 import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from langchain.prompts import PromptTemplate
 
 import _settings
 
-def sample_to_prompt(sample, model_type, **kwargs):
-    if isinstance(sample['question'], list):
-        return [sample_to_prompt({'question': _}, model_type, **kwargs) for _ in sample['question']]
-    if model_type == 'non_instruct':
-        return f"""Answer these questions:
-        Q: In Scotland a bothy/bothie is a?
-        A: House
-        Q: {sample['question']}
-        A:"""
-    else:
-        return f"""[INST]
+non_inst_prompt = PromptTemplate(
+    input_variables=["question"],
+    template = """[INST] 
         Answer these questions:
         Q: In Scotland a bothy/bothie is a?
         A: House
-        Q: {sample['question']}
+        Q: {question}
         A:
-        [/INST]"""
+    [/INST]"""
+)
 
+inst_prompt = PromptTemplate(
+    input_variables=["question"],
+    template = """[INST] 
+        Answer these questions:
+        Q: In Scotland a bothy/bothie is a?
+        A: House
+        Q: {question}
+        A:
+    [/INST]"""
+)
+
+llama3_prompt = PromptTemplate(
+    input_variables=["question"],
+    template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+        Answer these questions:
+        Q: In Scotland a bothy/bothie is a?
+        A: House
+        Q: {question}
+        A:
+    <|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+)
+
+def sample_to_prompt(sample, model_type, tokenizer, **kwargs):
+    if isinstance(sample['question'], list):
+        return [sample_to_prompt({'question': _}, model_type, tokenizer, **kwargs) for _ in sample['question']]
+    if model_type == 'non_instruct':
+        return non_inst_prompt.format(question=sample['question'])
+    elif model_type == 'instruct' and tokenizer.__class__.__name__ == 'PreTrainedTokenizerFast':
+        return llama3_prompt.format(question=sample['question'])
+    else:
+        return inst_prompt.format(question=sample['question'])
 
 """
 https://arxiv.org/pdf/2302.13971.pdf
@@ -63,7 +88,7 @@ def process_data_to_model_inputs(batch, tokenizer, model_type='non_instruct'):
     # assert len(batch['answer']) == 1
     # tokenize the inputs and labels
     answers = [answer["value"] for answer in batch["answer"]]
-    batch_with_prompt = sample_to_prompt(batch, model_type=model_type)
+    batch_with_prompt = sample_to_prompt(batch, model_type=model_type, tokenizer=tokenizer)
     inputs = tokenizer(batch_with_prompt, padding=False, truncation=False)
     outputs = tokenizer(answers, padding=False, truncation=False)
 

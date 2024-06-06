@@ -4,7 +4,7 @@ import time
 
 import openai
 import persist_to_disk as ptd
-from openai.error import APIError, RateLimitError
+from openai import APIError, RateLimitError
 import random
 import numpy as np
 
