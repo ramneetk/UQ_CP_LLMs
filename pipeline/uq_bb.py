@@ -260,6 +260,7 @@ class UQ_computer:
                 if split == 'test':
                     self.keep_indices = trivia_split_indices['test']
             else:
+                print('ValueError', len(self.generations), cal_size)
                 self.keep_indices = np.random.RandomState(seed).choice(len(self.generations), cal_size, replace=False)
                 if split == 'test':
                     self.keep_indices = set(np.arange(len(self.generations))) - set(self.keep_indices)
@@ -906,7 +907,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
 
 if __name__ == '__main__':
     from _settings import GEN_PATHS
-    o = UQ_summ(GEN_PATHS['coqa']['llama-13b-hf'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
+    o = UQ_summ(GEN_PATHS['coqa']['llama3'], clean=True, split='test', cal_size=1000, seed=1, symmetric_laplacian=True, symmetric_W=True) # GEN_PATHS['coqa']['llama-13b'], cal_size=2000 for triviaqa, llama-13b, 1000 o.w.
     #res = o.get_uq('generations|rougeL|acc', num_gens=20)
     num_gens = 20
     summ_kwargs = {
@@ -915,22 +916,22 @@ if __name__ == '__main__':
         'c+ia': {'overall': False, 'use_conf': True},
     }['c+ia']
     summ_obj = o.summ([
-        # 'generations|spectral_eigv_clip|disagreement_w',
-        # 'generations|eccentricity|disagreement_w',
-        # 'generations|degree|disagreement_w',
+         'generations|spectral_eigv_clip|disagreement_w',
+         'generations|eccentricity|disagreement_w',
+         'generations|degree|disagreement_w',
 
-        # 'generations|spectral_eigv_clip|agreement_w', 
-        # 'generations|eccentricity|agreement_w', 
-        # 'generations|degree|agreement_w',
+         'generations|spectral_eigv_clip|agreement_w', 
+         'generations|eccentricity|agreement_w', 
+         'generations|degree|agreement_w',
 
-        # 'generations|spectral_eigv_clip|jaccard', 
-        # 'generations|eccentricity|jaccard',
-        # 'generations|degree|jaccard',
+         'generations|spectral_eigv_clip|jaccard', 
+         'generations|eccentricity|jaccard',
+         'generations|degree|jaccard',
     
         'semanticEntropy|unnorm', 
-        # 'generations|numsets', 
-        # 'lexical_sim',
-        # 'self_prob',
+         'generations|numsets', 
+         'lexical_sim',
+         'self_prob',
 
         # ours with alpha clustering
         'alphaSemanticEntropy|unnorm',

@@ -10,4 +10,9 @@ langchain
 ipdb
 openai
 persist_to_disk
-
+evaluate
+pandarallel
+rouge_score
+scipy
+matplotlib
+scikit-learn

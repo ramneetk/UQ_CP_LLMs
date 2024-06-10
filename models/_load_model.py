@@ -65,4 +65,6 @@ def _load_pretrained_tokenizer(model_name, use_fast=False):
         tokenizer.pad_token = tokenizer.eos_token
     elif model_name == 'Meta-Llama-3-8B-Instruct':
         tokenizer = AutoTokenizer.from_pretrained(os.path.join(LLAMA_PATH, model_name), cache_dir=None, use_fast=use_fast)
+        tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
     return tokenizer

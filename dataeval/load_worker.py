@@ -96,7 +96,7 @@ def _compare_generated_texts_to_answers(preds, reference_answers, deberta=False)
 def _clean_sample(sample, tokenizer):
     # https://github.com/lorenzkuhn/semantic_uncertainty/blob/main/code/clean_generated_strings.py
     def _clean_answer(old_text:str, old_token_ids, tokenizer):
-        cleaned_text = old_text
+        cleaned_text = old_text.lstrip()
         strings_to_filter_on = [
                     '.', '\n', 'Q:', 'A:', 'question:', 'answer:', 'Question:', 'Answer:', 'Questions:', 'questions:', 'QUESTION:',
                     'ANSWER:'
@@ -110,15 +110,18 @@ def _clean_sample(sample, tokenizer):
                 text=old_text,
             )
         token_ids = tokenizer.encode(cleaned_text, return_tensors='pt')[0]
-        assert token_ids[0] == tokenizer.bos_token_id
-        token_ids = token_ids[1:]
+        if token_ids[0] == tokenizer.bos_token_id:
+            token_ids = token_ids[1:]
         return dict(text_cleaned=cleaned_text,
                     token_cleaned=token_ids.cpu(),
                     text=old_text,
                     token=old_token_ids.cpu(),
                     reverse_prompt_nlls=sample.get('reverse_prompt_nlls', None),
                     )
-    ret = {k: sample[k] for k in ['prompt', 'id', 'question', 'answer', 'additional_answers', 'reverse_prompt_nlls']}
+    if 'reverse_prompt_nlls' in sample:
+        ret = {k: sample[k] for k in ['prompt', 'id', 'question', 'answer', 'additional_answers', 'reverse_prompt_nlls']}
+    else:
+        ret = {k: sample[k] for k in ['prompt', 'id', 'question', 'answer', 'additional_answers']}
     ret['generations'] = [None] * len(sample['generations'])
     if tokenizer is None:
         for i, generation in enumerate(sample['generations']):
