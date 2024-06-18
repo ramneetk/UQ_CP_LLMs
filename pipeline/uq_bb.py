@@ -835,11 +835,11 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
         return indiv_acc.mean(1), indiv_acc
 
     def _tune_params(self, num_gens=20, metric:str=None,
-                       temperature=[0.1, 0.25, 0.5, 1, 3, 5, 7],
-                       eigv_threshold = [0.4,  0.5, 0.6, 0.7, 0.8,  0.9],
+                       #temperature=[0.1, 0.25, 0.5, 1, 3, 5, 7],
+                       #eigv_threshold = [0.4,  0.5, 0.6, 0.7, 0.8,  0.9],
                        # fixing temperature and eigv_threshold for now: fair comparison between different clustering approaches
-                       #temperature=[0.1], 
-                       #eigv_threshold = [0.4],
+                       temperature=[3], 
+                       eigv_threshold = [0.9],
                        curve='auarc', # tune the hyperparams using this curve
                        overall=False, use_conf=True,
                        ):
@@ -916,19 +916,20 @@ if __name__ == '__main__':
         'c+ia': {'overall': False, 'use_conf': True},
     }['c+ia']
     summ_obj = o.summ([
-         'generations|spectral_eigv_clip|disagreement_w',
-         'generations|eccentricity|disagreement_w',
-         'generations|degree|disagreement_w',
+#         'generations|spectral_eigv_clip|disagreement_w',
+#         'generations|eccentricity|disagreement_w',
+#         'generations|degree|disagreement_w',
 
          'generations|spectral_eigv_clip|agreement_w', 
-         'generations|eccentricity|agreement_w', 
-         'generations|degree|agreement_w',
+#         'generations|eccentricity|agreement_w', 
+#        'generations|degree|agreement_w',
 
-         'generations|spectral_eigv_clip|jaccard', 
-         'generations|eccentricity|jaccard',
-         'generations|degree|jaccard',
+#         'generations|spectral_eigv_clip|jaccard', 
+#         'generations|eccentricity|jaccard',
+#         'generations|degree|jaccard',
     
         'semanticEntropy|unnorm', 
+        'semanticEntropy|norm', 
          'generations|numsets', 
          'lexical_sim',
          'self_prob',
@@ -940,9 +941,10 @@ if __name__ == '__main__':
         #'PredictionSetsAlphaSemanticEntropy|unnorm',
     ], 
         
-        acc_name='generations|deberta_entailment|acc',
+        acc_name='generations|rougeL|acc',
+#        acc_name='generations|deberta_entailment|acc',
         #acc_name='generations|deberta_entailment|acc', # rougeL|acc / gpt|acc / deberta_entailment|acc
         num_gens=num_gens, **summ_kwargs
     )
-    print(summ_obj.summ_overall('rej_acc')) # auarc/auroc/rej_acc
+    print(summ_obj.summ_overall('auarc')) # auarc/auroc/rej_acc
 

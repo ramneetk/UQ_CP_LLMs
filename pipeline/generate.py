@@ -220,7 +220,7 @@ def get_generations(model_name:str, args, seed=10, old_sequences=None, max_num_g
             if args.dataset == 'coqa':
                 curr_seq['additional_answers'] = [x[0] for x in batch['additional_answers']]
 
-        sequences.append(curr_seq)
+            sequences.append(curr_seq)
     
     elif args.prompt_type == 'reverse': # asking model to output questions for the generated answers
         # if coqa, we also need story for the reverse prompt

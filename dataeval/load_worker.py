@@ -96,14 +96,13 @@ def _compare_generated_texts_to_answers(preds, reference_answers, deberta=False)
 def _clean_sample(sample, tokenizer):
     # https://github.com/lorenzkuhn/semantic_uncertainty/blob/main/code/clean_generated_strings.py
     def _clean_answer(old_text:str, old_token_ids, tokenizer):
-        cleaned_text = old_text.lstrip()
+        cleaned_text = old_text
         strings_to_filter_on = [
                     '.', '\n', 'Q:', 'A:', 'question:', 'answer:', 'Question:', 'Answer:', 'Questions:', 'questions:', 'QUESTION:',
                     'ANSWER:'
                 ]
         for string in strings_to_filter_on:
-            if string in cleaned_text:
-                cleaned_text = cleaned_text.split(string)[0]
+            cleaned_text = cleaned_text.replace(string, '')
         if tokenizer is None:
             return dict(
                 text_cleaned=cleaned_text,
@@ -287,7 +286,6 @@ def _get_loglikelihoods(samples, model, tokenizer, clean:bool, logger=None):
         prompt = sample['prompt'].to(model.device)
         assert prompt.ne(tokenizer.pad_token_id).all() and len(prompt.shape) == 1
         curr_summ['prompt'] = _create_output_prompt(model, tokenizer, prompt)
-
         sampled_summ = [_create_output_from_generation(model, tokenizer, _, prompt) for _ in sample['generations'][token_key]]
         curr_summ['generations'] = {k: [_[k] for _ in sampled_summ] for k in sampled_summ[0].keys()}
         for _ in ['sequence_embedding', 'unconditioned_sequence_embedding']:
