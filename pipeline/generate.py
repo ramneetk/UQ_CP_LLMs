@@ -27,8 +27,6 @@ import utils
 import numpy as np
 import pickle
 
-import pdb
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default='llama-13b-hf') # Mistral-7B-Instruct-v0.2 for mistral
 parser.add_argument('--dataset', type=str, default='coqa')
@@ -43,7 +41,6 @@ parser.add_argument('--seed', type=int, default=10) # 10 for COQA on LLAMA-2-13B
 parser.add_argument('--model_type', type=str, default='non_instruct') # non_instruct (llama) vs instruct (mistral)
 parser.add_argument('--max_length_of_generated_sequence', type=int, default=256) # 256 for llama, 50 for mistral
 parser.add_argument('--nprocess', type=int, default=None)
-parser.add_argument('--prompt_type', type=str, default='direct') # direct for generating answers and reverse for generating question for an answer
 
 args = parser.parse_args()
 
@@ -79,7 +76,6 @@ def get_dataset_fn(data_name):
         return coqa.get_dataset
     
 def get_generation_config(input_ids, tokenizer, data_name):
-    #assert len(input_ids.shape) == 2
     max_length_of_generated_sequence = args.max_length_of_generated_sequence # 50 for mistral, 256 for llama
     if data_name == 'triviaqa':
         generation_config = triviaqa._generate_config(tokenizer)
@@ -132,7 +128,7 @@ def get_generations(model_name:str, args, seed=10, old_sequences=None, max_num_g
         generations = []
         num_gens = args.num_generations_per_prompt
         
-        if args.dataset != 'triviaqa' or args.model != 'llama-13b-hf': # if trivia, then do not generate but use generations from from Conformal Language Modeling paper
+        if args.dataset != 'triviaqa' or args.model != 'llama-13b-hf': # if trivia on llama-13b, then do not generate but use generations from from Conformal Language Modeling paper
             while num_gens > 0:
                 _ =  model.generate(input_ids, attention_mask=batch['attention_mask'].to(device),
                                         num_beams=1, num_return_sequences=min(max_num_gen_once, num_gens),
