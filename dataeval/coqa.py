@@ -8,12 +8,23 @@ from datasets import Dataset
 
 import _settings
 
+from langchain.prompts import PromptTemplate
+
+inst_prompt = PromptTemplate(
+    input_variables=["story", "question"],
+    template = """[INST] 
+        Output the shortest answer possible to the following question based on the story.
+        story = {story}
+        question = {question}
+    [/INST]"""
+)
 
 def _save_dataset():
     # https://github.com/lorenzkuhn/semantic_uncertainty/blob/main/code/parse_coqa.py
     save_path = f'{_settings.DATA_FOLDER}/coqa_dataset'
     if not os.path.exists(save_path):
-        # https://downloads.cs.stanford.edu/nlp/data/coqa/coqa-dev-v1.0.json
+        #### Download this in {_settings.DATA_FOLDER} ####
+        # https://downloads.cs.stanford.edu/nlp/data/coqa/coqa-dev-v1.0.json 
         with open(f'{_settings.DATA_FOLDER}/coqa-dev-v1.0.json', 'r') as infile:
             data = json.load(infile)['data']
 
@@ -60,14 +71,17 @@ def read_all_contexts():
     dataset = datasets.load_from_disk(_save_dataset())
     return {_['id']: _['story'] for _ in dataset}
 
-def get_dataset(tokenizer, split='validation'):
+def get_dataset(tokenizer, split='validation', model_type='non_instruct'):
     # from https://github.com/lorenzkuhn/semantic_uncertainty/blob/main/code/parse_coqa.py
     dataset = datasets.load_from_disk(_save_dataset())
     id_to_question_mapping = dict(zip(dataset['id'], dataset['question']))
 
     def encode_coqa(example):
         example['answer'] = example['answer']['text']
-        example['prompt'] = prompt = example['story'] + ' Q: ' + example['question'] + ' A:'
+        if model_type == 'non_instruct': # for non_instruction model such as llama
+            example['prompt'] = prompt = example['story'] + ' Q: ' + example['question'] + ' A:'
+        else: # for instruction model such as mistral
+            example['prompt'] = prompt = inst_prompt.format(story=example['story'], question=example['question'])
         return tokenizer(prompt, truncation=False, padding=False)
 
 
@@ -85,11 +99,13 @@ def _generate_config(tokenizer):
     elif tokenizer.__class__.__name__ == 'GPT2Tokenizer':
         eos_token_id = [tokenizer.encode(_)[1] for _ in ['.', '\n']]
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"Tokenizer was {tokenizer.__class__.__name__}")
     eos_token_id += [tokenizer.eos_token_id]
+
     question_framing_ids = ['Question:', ' Question:', '\n', 'Answer:', ' Answer:', 'Q:']
     # Follows Kuhn et al 2023 as Llama does not have CoQA
-    question_framing_ids = [[tokenizer(eos_token)['input_ids'][1]] for eos_token in question_framing_ids]
+    # Changed index from [1] to [-1] because most 'input_ids' lists have two values, but '\n' only has 1 with Llama3
+    question_framing_ids = [[tokenizer(eos_token)['input_ids'][-1]] for eos_token in question_framing_ids]
     return dict(eos_token_id=eos_token_id, bad_words_ids=question_framing_ids)
 
 if __name__ == '__main__':
