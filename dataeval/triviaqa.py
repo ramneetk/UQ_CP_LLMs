@@ -36,24 +36,11 @@ inst_prompt = PromptTemplate(
     [/INST]"""
 )
 
-llama3_prompt = PromptTemplate(
-    input_variables=["question"],
-    template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
-        Answer these questions:
-        Q: In Scotland a bothy/bothie is a?
-        A: House
-        Q: {question}
-        A:
-    <|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
-)
-
 def sample_to_prompt(sample, model_type, tokenizer, **kwargs):
     if isinstance(sample['question'], list):
         return [sample_to_prompt({'question': _}, model_type, tokenizer, **kwargs) for _ in sample['question']]
     if model_type == 'non_instruct':
         return non_inst_prompt.format(question=sample['question'])
-    elif model_type == 'instruct' and tokenizer.__class__.__name__ == 'PreTrainedTokenizerFast':
-        return llama3_prompt.format(question=sample['question'])
     else:
         return inst_prompt.format(question=sample['question'])
 
