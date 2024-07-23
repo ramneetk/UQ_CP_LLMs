@@ -13,7 +13,7 @@ import utils
 import pdb
 import numpy as np
 
-DEFAULT_DEVICE = 'cuda:2'
+DEFAULT_DEVICE = 'cuda:0'
 
 IGNORE_INDEX = -100
 
@@ -105,7 +105,6 @@ def read_gpt_eval(path:str, clean=True, debug=False, parallel=False, ith=0, read
     file_name += f'{ith}'
     np.savez(file=file_name, evals=evals)
     ######################################################
-    #evals = {k: {"id": k, "response": v.split(".")[0].split()[0]} for k, v in evals.items()}
     # the following loop is a sanity check for GPT evaluations such as: '.com is MEERKOVO.\nRating: 100.', here v.split(".")[0]= ''
     keys_of_items_to_be_removed_from_evals = []
     for k, v in evals.items():
@@ -119,7 +118,6 @@ def read_gpt_eval(path:str, clean=True, debug=False, parallel=False, ith=0, read
     evals = {k: {"id": k, "response": v[0].split(".")[0].split()[0]} for k, v in evals.items()} # v contains 3 items now: (top_output, [top 5 outputs], [prob of top 5 outputs])
     return evals
 
-# ==============The following are optional or for baselines =================
 @functools.lru_cache(maxsize=4)
 def read_rouges_new(path:str, clean=True, debug=False, parallel=False):
     # alternative to GPT evaluation, using ROUGE
@@ -211,31 +209,25 @@ def read_self_eval(path:str, device=None, clean=True, debug=False):
 if __name__ == '__main__':
     import _settings
     device = 'cuda:0'
+    
     for data, _ in _settings.GEN_PATHS.items():
         for model, path in _.items():
             print(path)
-            # organize the results.
-            ## UNCOMMENT ##
             read_cleaned_outputs_new(path)
 
-            # compare each pair of generated responses - this could be sped up by using batches
-            ## UNCOMMENT ##
-            read_semantic_similarities_new(path, device=device)
-
-            ###### UNCOMMENT LATER: COMMENTING GPT EVAL FOR NOW #########
-            #for ith in tqdm.tqdm(range(20)): # 20 generations in total
-            #    read_gpt_eval(path, ith=ith) # evaluate the accuracy of the responses
+            # compare each pair of generated responses - this could be speed up by using batches
+            read_semantic_similarities_new(path, device=device) # for deberta baselines as well as GT evaluation using Deberta
 
             # the lexical similarity baseline
-            ## UNCOMMENT ##
             read_lexical_sim(path, parallel=True)
 
-            # for white-box method
-            ## UNCOMMENT ##
-            #if model != 'gpt-3.5-turbo':
-            if model != 'gpt-4-turbo-preview':
-                read_loglikelihoods_and_more_new(path, device=device)
-                read_self_eval(path, device=device)
+            # for white-box methods
+            read_loglikelihoods_and_more_new(path, device=device)
+            read_self_eval(path, device=device)
 
-            # For evaluation of the generated responses
+            # For evaluation of the generated responses using rougeL
             read_rouges_new(path, parallel=True) # compute the rougeL scores
+
+            # for GPT evaluation
+            for ith in tqdm.tqdm(range(20)): # 20 generations in total
+                read_gpt_eval(path, ith=ith) # evaluate the accuracy of the responses
