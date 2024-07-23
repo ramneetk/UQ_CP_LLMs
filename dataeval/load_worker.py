@@ -18,9 +18,6 @@ import models.nli as sc
 import utils
 
 import time
-import pdb
-
-# import wandb
 
 pandarallel.initialize(progress_bar=True, nb_workers=16)
 
@@ -277,7 +274,6 @@ def _create_output_from_generation(model, tokenizer, generation, prompt):
 
 @torch.no_grad()
 def _get_loglikelihoods(samples, model, tokenizer, clean:bool, logger=None):
-    #pdb.set_trace()
     token_key = 'token_cleaned' if clean else 'token'
     ret = []
     for sample in tqdm.tqdm(samples):
