@@ -47,8 +47,7 @@ def _compare_generated_text_to_answers(pred_txt, reference_answers):
             sequence_dict[rouge_type] = max(rouge_results[rouge_type], sequence_dict[rouge_type])
     return sequence_dict
 
-# for Deberta scores for either entailment logits from GT to Gen or entailment logits from Gen to GT
-# similar to deberta
+# Using Deberta for evaluation - a generation is considered accurate if the GT answer is entailed in the generation
 def _calc_deberta_entailment_scores(pred_txt, reference_answers):
     DEVICE = 'cuda:0'
     # 'microsoft/deberta-large-mnli model
@@ -56,26 +55,15 @@ def _calc_deberta_entailment_scores(pred_txt, reference_answers):
 
     pred_txt = pred_txt.lstrip().lower()
     score_type = ['deberta_entailment']
-    # no need to returning exact matched scores from evaluate
-    #sequence_dict = {_:0. for _ in ['exact_match'] + score_type}
     sequence_dict = {_:0. for _ in score_type}
     unique_reference_answers = set([_.lstrip().lower() for _ in reference_answers])
     for answer in unique_reference_answers:
         predictions = pred_txt
         references = answer
-        # for including exact_match results in sequence_dict
-        # results = exact_match_metric.compute(predictions=[predictions],
-        #                                      references=[references],
-        #                                      ignore_case=True,
-        #                                      ignore_punctuation=True)
-        # sequence_dict['exact_match'] = max(results['exact_match'], sequence_dict['exact_match'])
 
-        # deberta score computations for entailment in either direction
+        # deberta score computations for entailment of GT in generated answer
         gt_to_gen_ans_logits = nli_model._pred(references, predictions)
         gt_to_gen_ans_logits = gt_to_gen_ans_logits.detach().cpu().numpy()
-        #gen_to_gt_ans_logits = nli_model._pred(predictions, references)
-        #gen_to_gt_ans_logits = gen_to_gt_ans_logits.detach().cpu().numpy()
-        #deberta_result = ((gt_to_gen_ans_logits.argmax() == 2) or (gen_to_gt_ans_logits.argmax()) == 2).astype(float) # this will be 1 for entailment in either direction else 0
         deberta_result = (gt_to_gen_ans_logits.argmax() == 2).astype(float)
         sequence_dict[score_type[0]] = max(deberta_result, sequence_dict[score_type[0]]) # there is only 1 score in score_type
 
@@ -88,7 +76,6 @@ def _compare_generated_texts_to_answers(preds, reference_answers, deberta=False)
     else: # rouge score
         results = {_: _compare_generated_text_to_answers(_, reference_answers) for _ in pred_map.values()}
     return {pred: results[pred_map[pred]] for pred in preds}
-    #return [results[pred_map[pred]] for pred in preds]
 
 def _clean_sample(sample, tokenizer):
     # https://github.com/lorenzkuhn/semantic_uncertainty/blob/main/code/clean_generated_strings.py
@@ -340,12 +327,6 @@ def _get_gpt_eval_sample(row, text_key = None, ith=None, dataset:str=None, few_s
                         {'question': 'Where in England was Dame Judi Dench born?',
                         'reference':  'York', 'answer': 'London'
                             }],
-            'nq_open': [{'question': 'who makes up the state council in russia',
-                            'reference': 'governors and presidents', 'answer': 'governors and presidents'
-                            },
-                            {'question': 'when does real time with bill maher come back',
-                                'reference': 'November 9, 2018', 'answer': 'September 8, 2000'
-                            }],
             'coqa': [{'question': 'When was the Vat formally opened?',
                     'reference': 'It was formally established in 1475', 'answer': 'In 1475',
                     },
@@ -368,7 +349,6 @@ Question: {row['question']}
 Reference: {row['answer']}
 Answer: {pred.strip()}
 Rating:"""
-    # return models.openai_query(prompt, model='gpt-3.5-turbo', attemptd_id=0, max_tries=50)
     return models.openai_query(prompt, model='gpt-4-turbo-preview', attemptd_id=0, max_tries=50)
 
 def _get_gpt_eval(samples, clean:bool, ith:int, dataset:str, logger=None, parallel=False):
@@ -421,6 +401,7 @@ def _get_deberta_scores_sample(row, text_key=None):
     curr['generations'] = [all_results[_] for _ in _get_text(row['generations'])]
     return curr
 
+# for Deberta evaluation
 def _get_deberta_scores_parallel(samples, clean:bool, logger=None):
     text_key = 'text_cleaned' if clean else 'text'
     df = pd.DataFrame({key: [sample[key] for sample in samples] for key in ['id', 'answer', 'additional_answers']})
@@ -429,6 +410,7 @@ def _get_deberta_scores_parallel(samples, clean:bool, logger=None):
     ret = df.parallel_apply(_get_deberta_scores_sample, axis=1)
     return ret.values.tolist()
 
+# for Deberta evaluation
 def _get_deberta_scores(samples, clean:bool, logger=None):
     text_key = 'text_cleaned' if clean else 'text'
     ret = []
