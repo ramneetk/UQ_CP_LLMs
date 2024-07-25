@@ -1,6 +1,6 @@
 ##### COQA [Generations (0.pkl) in mistral-7b-hf_coqa_10, llama-13b-hf_coqa_10]
 # python3 -m pipeline.generate --temperature 1 --seed 10 --top_p 1 --model llama-13b-hf --model_type non_instruct --max_length_of_generated_sequence 256 --dataset coqa # temperature and top_p settings from existing papers
-# python3 -m pipeline.generate --temperature 1.5 --seed 0 --top_p 0.9 --model mistral-7b-hf --model_type instruct --max_length_of_generated_sequence 50 --dataset coqa # temperature and top_p decided from validation, max_lenght was restricted for supressing Mistral from hallucinating stories
+# python3 -m pipeline.generate --temperature 1.5 --seed 10 --top_p 0.9 --model mistral-7b-hf --model_type instruct --max_length_of_generated_sequence 50 --dataset coqa # temperature and top_p decided from validation, max_lenght was restricted for supressing Mistral from hallucinating stories
 
 ##### TRIVAIQA [Generations (0.pkl) in mistral-7b-hf_triviaqa_10, llama-13b-hf_triviaqa_0]
 # python3 -m pipeline.generate --temperature 1 --seed 0 --top_p 1 --model llama-13b-hf --model_type non_instruct --max_length_of_generated_sequence 256 --dataset triviaqa # settings from Conformal Modeling Paper, seed is 10 for generations but 0 for shuffling train, val and test indices from validation dataset
