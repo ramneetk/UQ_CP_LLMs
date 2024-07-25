@@ -16,21 +16,26 @@ def _load_pretrained_model(model_name, device, torch_dtype=torch.float16):
         model = OPTForCausalLM.from_pretrained(model_name, torch_dtype=torch_dtype)
     elif model_name == "microsoft/deberta-large-mnli":
         model = AutoModelForSequenceClassification.from_pretrained("microsoft/deberta-large-mnli")#, torch_dtype=torch_dtype)
-    elif model_name in ['llama-7b-hf', 'llama-13b-hf', 'Meta-Llama-3-8B-Instruct']:
+    elif model_name == 'llama-7b-hf' or model_name == 'llama-13b-hf':
         model = AutoModelForCausalLM.from_pretrained(os.path.join(LLAMA_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
     elif model_name == 'roberta-large-mnli':
-        model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli")#, torch_dtype=torch_dtype)
+         model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli")#, torch_dtype=torch_dtype)
     elif model_name == 'mistral-7b-hf': 
         model = AutoModelForCausalLM.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
-    else:
-        raise ValueError(f"No matching {model_name} found in _load_pretrained_model")
+        # trust_remote_code=True,
+        # low_cpu_mem_usage=True,
+        # quantization_config=BitsAndBytesConfig(
+        #     load_in_4bit=True,
+        #     bnb_4bit_use_double_quant=True,
+        #     bnb_4bit_quant_type="nf4",
+        #     bnb_4bit_compute_dtype=torch.float16
+        # ))
     model.to(device)
     return model
 
 
 @functools.lru_cache()
 def _load_pretrained_tokenizer(model_name, use_fast=False):
-    print(model_name)
     if model_name.startswith('facebook/opt-'):
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=use_fast)
     elif model_name == "microsoft/deberta-large-mnli":
@@ -46,16 +51,11 @@ def _load_pretrained_tokenizer(model_name, use_fast=False):
         tokenizer.pad_token_id = tokenizer.eos_token_id
         tokenizer.pad_token = tokenizer.eos_token
     elif model_name == 'mistral-7b-hf':
-        #tokenizer = AutoTokenizer.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, use_fast=use_fast)
-        tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', cache_dir=None, use_fast=use_fast)
+        tokenizer = AutoTokenizer.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, use_fast=use_fast)
         tokenizer.eos_token_id = 2
         tokenizer.bos_token_id = 1
         tokenizer.eos_token = tokenizer.decode(tokenizer.eos_token_id)
         tokenizer.bos_token = tokenizer.decode(tokenizer.bos_token_id)
         tokenizer.pad_token_id = tokenizer.eos_token_id
         tokenizer.pad_token = tokenizer.eos_token
-    elif model_name == 'Meta-Llama-3-8B-Instruct':
-        tokenizer = AutoTokenizer.from_pretrained(os.path.join(LLAMA_PATH, model_name), cache_dir=None, use_fast=use_fast)
-        tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
-        tokenizer.pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
     return tokenizer
