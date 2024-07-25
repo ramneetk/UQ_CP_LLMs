@@ -19,18 +19,9 @@ def _load_pretrained_model(model_name, device, torch_dtype=torch.float16):
     elif model_name in ['llama-7b-hf', 'llama-13b-hf', 'Meta-Llama-3-8B-Instruct']:
         model = AutoModelForCausalLM.from_pretrained(os.path.join(LLAMA_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
     elif model_name == 'roberta-large-mnli':
-         model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli")#, torch_dtype=torch_dtype)
+        model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli")#, torch_dtype=torch_dtype)
     elif model_name == 'mistral-7b-hf': 
-        # model = AutoModelForCausalLM.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
-        model = AutoModelForCausalLM.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', cache_dir=None, torch_dtype=torch_dtype)
-        # trust_remote_code=True,
-        # low_cpu_mem_usage=True,
-        # quantization_config=BitsAndBytesConfig(
-        #     load_in_4bit=True,
-        #     bnb_4bit_use_double_quant=True,
-        #     bnb_4bit_quant_type="nf4",
-        #     bnb_4bit_compute_dtype=torch.float16
-        # ))
+        model = AutoModelForCausalLM.from_pretrained(os.path.join(MISTRAL_PATH, model_name), cache_dir=None, torch_dtype=torch_dtype)
     else:
         raise ValueError(f"No matching {model_name} found in _load_pretrained_model")
     model.to(device)
