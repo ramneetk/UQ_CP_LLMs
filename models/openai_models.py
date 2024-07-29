@@ -4,11 +4,8 @@ import time
 
 import openai
 import persist_to_disk as ptd
-from openai import APIError, RateLimitError
 import random
 import numpy as np
-
-import pdb
 
 TOTAL_TOKEN = 0
 
@@ -26,9 +23,8 @@ def retry_openai_query(prompt='Hello World', model='ada', attempt_id=0, max_trie
     for i in range(max_tries):
         try:
             return _openai_query_cached_new(prompt, model, attempt_id, logprobs, top_logprobs)
-        #except (RateLimitError, APIError) as e:
         except openai.OpenAIError as e:
-            print("HHHHHHHELLOOOOOOOOOOOOOOO")
+            print("Here due to Error")
             print(e)
             randomness_collision_avoidance = random.randint(0, 1000) / 1000.0
             delay_secs = 4**i
@@ -40,7 +36,6 @@ def retry_openai_query(prompt='Hello World', model='ada', attempt_id=0, max_trie
             continue
 
 def _token_to_price(model, tokens):
-    #return tokens // 1000 * {'gpt-3.5-turbo': 0.002}[model]
     return tokens // 1000 * {'gpt-4-turbo-preview': 0.002}[model]
 
 def openai_query(prompt, model, attemptd_id, max_tries=50, verbose=False, logprobs=True, top_logprobs=5):
