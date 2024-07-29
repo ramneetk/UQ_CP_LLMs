@@ -16,13 +16,11 @@ import _settings
 
 non_inst_prompt = PromptTemplate(
     input_variables=["question"],
-    template = """[INST] 
-        Answer these questions:
+    template = """Answer these questions:
         Q: In Scotland a bothy/bothie is a?
         A: House
         Q: {question}
-        A:
-    [/INST]"""
+        A:"""
 )
 
 inst_prompt = PromptTemplate(
