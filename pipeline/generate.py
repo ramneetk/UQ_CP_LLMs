@@ -36,7 +36,7 @@ parser.add_argument('--decoding_method', type=str, default='greedy')
 parser.add_argument('--top_p', type=float, default=1.0) 
 parser.add_argument('--top_k', type=int, default=0)
 parser.add_argument('--seed', type=int, default=10)
-parser.add_argument('--model_type', type=str, default='non_instruct') 
+parser.add_argument('--model_type', type=str, default='non_instruct') # instruct for mistral
 parser.add_argument('--max_length_of_generated_sequence', type=int, default=256) 
 parser.add_argument('--nprocess', type=int, default=None)
 parser.add_argument('--prompt_type', type=str, default='direct')
