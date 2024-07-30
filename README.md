@@ -2,11 +2,11 @@
 This code is built on top of code for "Generating with Confidence: Uncertainty Quantification for Black-box Large Language Models" [arxiv](https://arxiv.org/abs/2305.19187).
 
 # Quick Start
-Note that to get the automatic evaluation based on GPT, you would need to update `keys.json` with your API keys first. 
+1. Note that to get the automatic evaluation based on GPT, you would need to update `keys.json` with your API keys first. 
 
-Set the corresponding paths in `_settings.py`: these paths are where your (a) model generations (or responses), and (b) downloaded model weights of `Llama-2-13b`, and `Mistral-7B-Instruct-v0.2` (from hugging face) will be stored.
+2. Set the corresponding paths in `_settings.py`: these paths are where your (a) model generations (or responses), and (b) downloaded model weights of `Llama-2-13b`, and `Mistral-7B-Instruct-v0.2` (from hugging face) will be stored.
 
-Install the dependies: ``` pip install -r requirements.txt ```
+3. Install the dependies: ``` pip install -r requirements.txt ```
 
 ## Generate 20 responses from the model
 Use the `llama-13b-hf`, `mistral-7b-hf` for model, and `coqa`, `triviaqa` (for exact values of hyperparameters used in the paper such as temperature, top_p etc. please read the topmost comments in pipeline/generate.py):
@@ -37,6 +37,6 @@ python3 -m pipeline.uq_bb --model $llama-13b-hf/mistral-7b-hf$ --dataset $coqa/t
 ```
 
 ## Notes on GPT evaltuaions
-We used `gpt-4-turbo-preview` (which points to `gpt-4-0125-preview`) for GT evaluations from GPT
+1. We used `gpt-4-turbo-preview` (which points to `gpt-4-0125-preview`) for GT evaluations from GPT
 
-These experiments were performed using openai version 0.28. If you get this OpenAI error: "You tried to access openai.ChatCompletion, but this is no longer supported in openai>=1.0.0 - see the README at https://github.com/openai/openai-python for the API." You can resolve it by installing to the old version, e.g. `pip install openai==0.28`.
+2. These experiments were performed using openai version 0.28. If you get this OpenAI error: "You tried to access openai.ChatCompletion, but this is no longer supported in openai>=1.0.0 - see the README at https://github.com/openai/openai-python for the API." You can resolve it by installing to the old version, e.g. `pip install openai==0.28`.
