@@ -177,7 +177,6 @@ class UQ_computer:
                 if split == 'test':
                     self.keep_indices = trivia_split_indices['test']
             else:
-                print('ValueError', len(self.generations), cal_size)
                 self.keep_indices = np.random.RandomState(seed).choice(len(self.generations), cal_size, replace=False)
                 if split == 'test':
                     self.keep_indices = set(np.arange(len(self.generations))) - set(self.keep_indices)
