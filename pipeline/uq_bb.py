@@ -607,6 +607,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
         all_eps_avg_acc_list = []
         all_eps_avg_ss_list = []
         for eps in epsilon:
+            print("Calculating accuracy and set size for epsilon: ", eps)
             cal_sement_threshold = sorted_cal_set_entropies[int((1-eps)*len(sorted_cal_set_entropies))]
             #print("cal_sement_threshold: ", cal_sement_threshold)
 
