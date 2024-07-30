@@ -11,6 +11,7 @@ import tqdm
 from scipy.special import softmax
 
 import sys
+sys.path.append('/WorkSpace-2/csamplawski/src/UQ-NLG')
 import _settings
 import dataeval.load as dload
 import pipeline.clustering as pc
@@ -152,7 +153,7 @@ class UQ_computer:
     def __init__(self, path, clean=False,
                  split=None, cal_size=None, seed=None) -> None:
 
-        print("Seed for UQ_computer: ", seed)
+        #print("Seed for UQ_computer: ", seed)
         if isinstance(path, str):
             self.path = path
             self.key = (_clean_path(path), clean)
@@ -213,7 +214,7 @@ class UQ_computer:
     @functools.cached_property
     def likelihoods(self):
         assert self.path is not None, "likelihoods are not available for black-box data"
-        print("load likelihoods")
+        #print("load likelihoods")
         likelihoods = dload.read_loglikelihoods_and_more_new(self.path, device=DEVICE, clean=self.key[1], debug=False)
         if likelihoods is not None:
             likelihoods = {_['id']: _ for _ in likelihoods}
@@ -458,7 +459,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
                  gpteval_examples = None) -> None:
         super().__init__(path, clean, split, cal_size, seed)
         self.gpteval_examples = gpteval_examples
-        print("Seed for UQ_summ: ", seed)
+        #print("Seed for UQ_summ: ", seed)
 
     @functools.cached_property
     def uq_measures(self):
@@ -608,7 +609,7 @@ class UQ_summ(UQ_computer): # UQ_computer is the base class of UQ_summ
         all_eps_avg_ss_list = []
         for eps in epsilon:
             cal_sement_threshold = sorted_cal_set_entropies[int((1-eps)*len(sorted_cal_set_entropies))]
-            print("cal_sement_threshold: ", cal_sement_threshold)
+            #print("cal_sement_threshold: ", cal_sement_threshold)
 
             # test set statistics
             self2 = self.__class__(self.path, self.key[1], 'test', self.key[3], self.key[4])
