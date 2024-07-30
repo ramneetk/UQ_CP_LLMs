@@ -691,8 +691,8 @@ if __name__ == '__main__':
             'semanticEntropy|unnorm', 
             'semanticEntropy|norm', 
             'generations|numsets', 
-            #'lexical_sim',
-            #'self_prob',
+            'lexical_sim',
+            'self_prob',
 
             # ours with alpha clustering
             'alphaSemanticEntropy|unnorm',
