@@ -222,9 +222,9 @@ if __name__ == '__main__':
             # compare each pair of generated responses - this could be speed up by using batches
             read_semantic_similarities_new(path, device=device)
 
-            ###### For GPT-4 evaluations, comment the following 2 lines for skipping GPT's Ground Truth evaluations #########
-            for ith in tqdm.tqdm(range(num_gens)): 
-               read_gpt_eval(path, ith=ith, gpt_eval=True) # evaluate the accuracy of the responses
+            ###### For GPT-4 evaluations, uncomment the following 2 lines for GPT's Ground Truth evaluations #########
+            # for ith in tqdm.tqdm(range(num_gens)): 
+            #    read_gpt_eval(path, ith=ith, gpt_eval=True) # evaluate the accuracy of the responses
 
             # the lexical similarity baseline
             read_lexical_sim(path, parallel=True)
