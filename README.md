@@ -27,13 +27,13 @@ python3 -m dataeval.load
 ### Step 2: Generate baseline and our results
 Run `pipeline/uq_bb.py`
 ```
-python3 -m pipeline.uq_bb --model $llama-13b-hf/mistral-7b-hf$ --dataset $coqa/triviaqa$ --cal_size 1000 --acc_name $generations|rougeL|acc/generations|deberata_entailment|acc/generations|gpt|acc$ --metric $auarc/auroc/rej_acc$
+python3 -m pipeline.uq_bb --model $llama-13b-hf/mistral-7b-hf$ --dataset $coqa/triviaqa$ --cal_size $1000 for coqa/2000 for triviaqa$ --acc_name $rougeL/deberta_entailment/gpt$ --metric $auarc/auroc/rej_acc$
 ```
 
 ## Run Conformal Prediction Experiments (Getting accuracy and set sizes)
 ### Assuming Step 1 from UQ Experiments has been done, Step 2 is to run uq_bb for generating prediction sets
 ```
-python3 -m pipeline.uq_bb --model $llama-13b-hf/mistral-7b-hf$ --dataset $coqa/triviaqa$ --cal_size $1000 for coqa/2000 for triviaqa$ --acc_name $generations|rougeL|acc/generations|deberata_entailment|acc/generations|gpt|acc$ --metric $auarc/auroc/rej_acc$ --output_pred_sets True
+python3 -m pipeline.uq_bb --model $llama-13b-hf/mistral-7b-hf$ --dataset $coqa/triviaqa$ --cal_size $1000 for coqa/2000 for triviaqa$ --acc_name $rougeL/deberta_entailment/gpt$ --output_pred_sets True
 ```
 
 ## Notes on GPT evaltuaions
