@@ -15,7 +15,7 @@ python3 -m pipeline.generate --model llama-13b-hf --dataset coqa
 ```
 The generations will be saved in the GENERATION_FOLDER/$model_dataset_seed$/$seed$.pkl. 
 
-You can also download the generations from both models on both datasets from here: $path$.
+%You can also download the generations from both models on both datasets from here: $path$.
 
 ## Run UQ Experiments
 ### Step 1: Compute scores required for UQ and GT evaluation on the generated responses
