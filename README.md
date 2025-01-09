@@ -1,5 +1,5 @@
 
-This code is built on top of code for "Generating with Confidence: Uncertainty Quantification for Black-box Large Language Models" [arxiv](https://arxiv.org/abs/2305.19187).
+This code is built on top of code for "Generating with Confidence: Uncertainty Quantification for Black-box Large Language Models" [arxiv](https://arxiv.org/abs/2305.19187): https://github.com/zlin7/UQ-NLG/tree/main.
 
 # Quick Start
 1. Note that to get the automatic evaluation based on GPT, you would need to update `keys.json` with your API keys first. 
